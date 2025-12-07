@@ -1,0 +1,20 @@
+from sqlalchemy import Column, Integer, Float, DateTime, String
+from datetime import datetime
+
+from database import Base
+
+# -----------------------------
+# Funds Table
+# -----------------------------
+class Fund(Base):
+    __tablename__ = "funds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    platform = Column(String, nullable=False)
+    risk_level = Column(String, nullable=False)
+    return_3y = Column(Float, nullable=False)
+    return_5y = Column(Float, nullable=False)
+    expense_ratio = Column(Float, nullable=False)
+    invest_url = Column(String, nullable=False)
