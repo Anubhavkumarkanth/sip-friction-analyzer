@@ -3,6 +3,17 @@ from datetime import datetime
 
 from database import Base
 
+class Simulation(Base):
+    __tablename__ = "simulations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ideal_value = Column(Float)
+    actual_value = Column(Float)
+    compounding_loss = Column(Float)
+    discipline_score = Column(Float)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # -----------------------------
 # Funds Table
 # -----------------------------
