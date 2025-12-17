@@ -17,3 +17,18 @@ class SIPSimulator:
     # ----------------------------------
     # Ideal disciplined investing
     # ----------------------------------
+    def calculate_ideal(self):
+        value = 0
+        monthly_amount = self.initial_monthly_amount
+        history = []
+
+        for month in range(1, self.total_months + 1):
+            value = (value + monthly_amount) * (1 + self.monthly_return)
+            if month % 12 == 0:
+                history.append({"year": month // 12, "ideal_value": round(value, 2)})
+
+        return round(value, 2), history
+
+    # ----------------------------------
+    # Behavioral investing
+    # ----------------------------------
