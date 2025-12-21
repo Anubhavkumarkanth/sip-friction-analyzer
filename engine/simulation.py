@@ -32,3 +32,77 @@ class SIPSimulator:
     # ----------------------------------
     # Behavioral investing
     # ----------------------------------
+    def calculate_actual(self, events: List[Dict]):
+
+        value = 0
+        monthly_amount = self.initial_monthly_amount
+
+        total_expected = 0
+        total_actual = 0
+
+        event_map = {}
+        pause_ranges = []
+        step_up_rate = 0
+
+        for event in events:
+            event_type = event.get("type")
+
+            if event_type == "PAUSE_RANGE":
+                pause_ranges.append(
+                    (event.get("start_month"), event.get("end_month"))
+                )
+
+            elif event_type == "STEP_UP":
+                step_up_rate = event.get("yearly_growth", 0)
+
+            else:
+                month = event.get("month")
+                if month:
+                    if month not in event_map:
+                        event_map[month] = []
+                    event_map[month].append(event)
+
+        history = []
+
+        for month in range(1, self.total_months + 1):
+
+            contribution = monthly_amount
+            total_expected += monthly_amount
+
+            for start, end in pause_ranges:
+                if start and end and start <= month <= end:
+                    contribution = 0
+
+            if month in event_map:
+                for event in event_map[month]:
+
+                    if event["type"] == "SKIP":
+                        contribution = 0
+
+                    elif event["type"] == "REDUCE":
+                        contribution = monthly_amount * event.get("factor", 1)
+
+                    elif event["type"] == "INCREASE":
+                        monthly_amount *= event.get("factor", 1)
+                        contribution = monthly_amount
+
+            total_actual += contribution
+
+            if step_up_rate and month % 12 == 0:
+                monthly_amount *= (1 + step_up_rate)
+
+            value = (value + contribution) * (1 + self.monthly_return)
+            
+            if month % 12 == 0:
+                history.append({"year": month // 12, "actual_value": round(value, 2)})
+
+        return (
+            round(value, 2),
+            round(total_expected, 2),
+            round(total_actual, 2),
+            history
+        )
+
+    # ----------------------------------
+    # Monte Carlo Simulation (Clean Version)
+    # ----------------------------------
