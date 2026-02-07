@@ -40,3 +40,14 @@ class Event(BaseModel):
     start_month: Optional[int] = Field(None, ge=1)
     end_month: Optional[int] = Field(None, ge=1)
 
+class SimulationRequest(BaseModel):
+    monthly_amount: float = Field(..., gt=0)
+    annual_return: float = Field(..., gt=0)
+    years: int = Field(..., gt=0)
+    events: List[Event] = []
+
+class MonteCarloRequest(SimulationRequest):
+    simulations: int = Field(1000, gt=0, le=5000)
+    volatility: float = Field(0.15, gt=0)
+
+
