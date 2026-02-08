@@ -51,3 +51,57 @@ class MonteCarloRequest(SimulationRequest):
     volatility: float = Field(0.15, gt=0)
 
 
+# ----------------------------------
+# Deterministic Simulation
+# ----------------------------------
+@app.post("/simulate")
+def simulate_sip(request: SimulationRequest, db: Session = Depends(get_db)):
+    try:
+        sim = SIPSimulator(
+            monthly_amount=request.monthly_amount,
+            annual_return=request.annual_return / 100,  # Convert from % to decimal
+            years=request.years
+        )
+
+        events_dict = [event.model_dump() for event in request.events]
+
+        ideal, ideal_history = sim.calculate_ideal()
+        actual, total_expected, total_actual, actual_history = sim.calculate_actual(events_dict)
+
+        ccr = calculate_ccr(total_expected, total_actual)
+        cld = calculate_cld(ideal, actual)
+        cld_ratio = cld / ideal if ideal != 0 else 0
+        discipline_score = calculate_discipline_score(ccr, cld_ratio)
+
+        db_simulation = Simulation(
+            ideal_value=ideal,
+            actual_value=actual,
+            compounding_loss=cld,
+            discipline_score=discipline_score
+        )
+        db.add(db_simulation)
+        db.commit()
+        
+        chart_data = []
+        for i_hist, a_hist in zip(ideal_history, actual_history):
+            chart_data.append({
+                "year": i_hist["year"],
+                "ideal": i_hist["ideal_value"],
+                "actual": a_hist["actual_value"]
+            })
+
+        return {
+            "ideal_value": ideal,
+            "actual_value": actual,
+            "compounding_loss": cld,
+            "discipline_score": discipline_score,
+            "ccr": ccr,
+            "total_expected_contribution": total_expected,
+            "total_actual_contribution": total_actual,
+            "chart_data": chart_data
+        }
+    except Exception as e:
+        logger.error(f"Error in simulate_sip: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
