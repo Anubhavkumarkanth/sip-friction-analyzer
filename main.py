@@ -105,3 +105,29 @@ def simulate_sip(request: SimulationRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+# ----------------------------------
+# Monte Carlo Simulation
+# ----------------------------------
+@app.post("/monte-carlo")
+def monte_carlo_simulation(request: MonteCarloRequest):
+    try:
+        sim = SIPSimulator(
+            monthly_amount=request.monthly_amount,
+            annual_return=request.annual_return / 100,  # Convert from % to decimal
+            years=request.years
+        )
+
+        events_dict = [event.model_dump() for event in request.events]
+
+        result = sim.monte_carlo(
+            events=events_dict,
+            simulations=request.simulations,
+            volatility=request.volatility
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error in monte_carlo_simulation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
