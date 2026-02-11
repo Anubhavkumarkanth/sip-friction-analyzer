@@ -131,3 +131,16 @@ def monte_carlo_simulation(request: MonteCarloRequest):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+# ----------------------------------
+# Funds - Get All
+# ----------------------------------
+@app.get("/funds")
+def get_all_funds(db: Session = Depends(get_db)):
+    try:
+        funds = db.query(Fund).all()
+        return funds
+    except Exception as e:
+        logger.error(f"Error in get_all_funds: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
