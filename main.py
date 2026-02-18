@@ -144,3 +144,59 @@ def get_all_funds(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+# ----------------------------------
+# Smart Search (AI-like fallback)
+# ----------------------------------
+@app.get("/search-funds")
+def search_funds(
+    q: Optional[str] = Query(None),
+    risk: Optional[str] = Query(None),
+    platform: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        base_query = db.query(Fund)
+
+        # 1️⃣ Strict Filtering
+        query = base_query
+
+        if q:
+            query = query.filter(Fund.name.ilike(f"%{q}%"))
+
+        if risk:
+            query = query.filter(Fund.risk_level.ilike(f"%{risk}%"))
+
+        if platform:
+            query = query.filter(Fund.platform.ilike(f"%{platform}%"))
+
+        results = query.all()
+
+        # 2️⃣ Fallback: Remove risk & platform if empty
+        if not results:
+            fallback_query = base_query
+
+            if q:
+                fallback_query = fallback_query.filter(Fund.name.ilike(f"%{q}%"))
+
+            results = fallback_query.all()
+
+        # 3️⃣ Final fallback: Show Top 3 by performance
+        if not results:
+            results = base_query.order_by(Fund.return_5y.desc()).limit(3).all()
+
+        # Sorting (applied on final result)
+        if sort_by:
+            if sort_by == "return_3y":
+                results.sort(key=lambda x: x.return_3y, reverse=True)
+            elif sort_by == "return_5y":
+                results.sort(key=lambda x: x.return_5y, reverse=True)
+            elif sort_by == "expense_ratio":
+                results.sort(key=lambda x: x.expense_ratio)
+
+        return results
+    except Exception as e:
+        logger.error(f"Error in search_funds: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
