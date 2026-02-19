@@ -200,3 +200,80 @@ def search_funds(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+# ----------------------------------
+# Seed Data
+# ----------------------------------
+@app.on_event("startup")
+def seed_data():
+    db = SessionLocal()
+    try:
+        if db.query(Fund).count() == 0:
+            funds = [
+                Fund(
+                    name="Parag Parikh Flexi Cap Fund Direct",
+                    category="Flexi Cap",
+                    platform="All Platforms",
+                    risk_level="Moderately High",
+                    return_3y=21.4,
+                    return_5y=24.1,
+                    expense_ratio=0.6,
+                    invest_url="https://amc.ppfas.com/"
+                ),
+                Fund(
+                    name="Quant Small Cap Fund Direct",
+                    category="Small Cap",
+                    platform="All Platforms",
+                    risk_level="Very High",
+                    return_3y=34.2,
+                    return_5y=41.5,
+                    expense_ratio=0.77,
+                    invest_url="https://quantmutual.com/"
+                ),
+                Fund(
+                    name="HDFC Mid-Cap Opportunities Fund",
+                    category="Mid Cap",
+                    platform="All Platforms",
+                    risk_level="High",
+                    return_3y=28.5,
+                    return_5y=26.2,
+                    expense_ratio=0.81,
+                    invest_url="https://www.hdfcfund.com/"
+                ),
+                Fund(
+                    name="SBI Contra Fund Direct Growth",
+                    category="Equity / Contra",
+                    platform="All Platforms",
+                    risk_level="Very High",
+                    return_3y=31.2,
+                    return_5y=29.4,
+                    expense_ratio=0.68,
+                    invest_url="https://www.sbimf.com/"
+                ),
+                Fund(
+                    name="Nifty 50 Index Fund",
+                    category="Index",
+                    platform="Groww",
+                    risk_level="Moderate",
+                    return_3y=14.2,
+                    return_5y=15.6,
+                    expense_ratio=0.2,
+                    invest_url="https://groww.in/"
+                )
+            ]
+            db.add_all(funds)
+            db.commit()
+            
+        # Create a default test user if none exists
+        from auth import get_password_hash
+        if db.query(User).count() == 0:
+            test_user = User(
+                username="testuser",
+                hashed_password=get_password_hash("password123")
+            )
+            db.add(test_user)
+            db.commit()
+            
+    except Exception as e:
+        logger.error(f"Error seeding data: {str(e)}")
+    finally:
+        db.close()
