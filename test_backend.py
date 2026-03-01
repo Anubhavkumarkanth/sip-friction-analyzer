@@ -32,3 +32,14 @@ def test_simulate(token):
         assert "ideal_value" in data
         assert "compounding_loss" in data
 
+def test_validation_errors(token):
+    with TestClient(app) as client:
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {
+            "monthly_amount": -5000,  # Invalid
+            "annual_return": 12,
+            "years": 10
+        }
+        response = client.post("/simulate", json=payload, headers=headers)
+        assert response.status_code == 422  # Unprocessable Entity
+
