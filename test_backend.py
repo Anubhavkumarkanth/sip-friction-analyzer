@@ -43,3 +43,29 @@ def test_validation_errors(token):
         response = client.post("/simulate", json=payload, headers=headers)
         assert response.status_code == 422  # Unprocessable Entity
 
+def test_monte_carlo(token):
+    with TestClient(app) as client:
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {
+            "monthly_amount": 5000,
+            "annual_return": 12,
+            "years": 10,
+            "events": [],
+            "simulations": 10, # Configurable!
+            "volatility": 0.2
+        }
+        response = client.post("/monte-carlo", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "mean" in data
+
+if __name__ == "__main__":
+    print("Testing Auth...")
+    token = test_login_and_auth()
+    print("Testing /simulate...")
+    test_simulate(token)
+    print("Testing Validation...")
+    test_validation_errors(token)
+    print("Testing /monte-carlo config...")
+    test_monte_carlo(token)
+    print("All backend tests passed successfully!")
