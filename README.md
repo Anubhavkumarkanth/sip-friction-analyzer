@@ -82,6 +82,44 @@ The engine calculates:
 
 ---
 
+## 📊 Example Output
+
+```
+Monthly: ₹10,000 | Annual Return: 12% | Period: 20 years
+Events: Pause SIP (Month 50-60), Reduce to 50% (Month 120+)
+
+RESULTS:
+├─ Ideal Wealth:      ₹48,24,567
+├─ Actual Wealth:     ₹39,18,420
+├─ Friction Loss:     ₹9,06,147 (18.8%)
+├─ CCR:               87.5% (contributed 87.5% of expected)
+└─ Discipline Score:  72/100
+
+That's the cost of pausing during downturns!
+```
+
+---
+
+## 🔌 API Endpoints
+
+### Simulation
+- `POST /simulate` - Run SIP simulation with custom parameters
+- `POST /monte-carlo` - Monte Carlo simulation (1000+ paths)
+
+### Funds
+- `GET /search-funds` - Search funds by platform/risk/sort
+- `GET /funds` - List all available funds
+- `GET /funds/{id}` - Fund details
+
+### Auth (Future)
+- `POST /auth/register` - Create account
+- `POST /auth/login` - JWT token generation
+- `POST /auth/logout` - Token invalidation
+
+**API Documentation**: Visit `http://localhost:8000/docs` for interactive Swagger UI
+
+---
+
 ## 📈 Metrics Explained
 
 ### **CCR (Contribution Compliance Rate)**
