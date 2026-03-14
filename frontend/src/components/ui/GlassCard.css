@@ -1,0 +1,6 @@
+.glass-card-glow:hover {
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow:
+    var(--shadow-glass),
+    0 0 30px rgba(59, 130, 246, 0.08);
+}
