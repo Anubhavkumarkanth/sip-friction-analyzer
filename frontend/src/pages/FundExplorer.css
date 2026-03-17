@@ -1,0 +1,76 @@
+.explorer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.explorer-header {
+  padding: 1rem 1.5rem;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  border: var(--glass-border);
+}
+
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem !important;
+}
+
+.filter-inputs {
+  display: flex;
+  flex: 1;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.filter-inputs > * {
+  flex: 1;
+}
+
+.custom-select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  transition: var(--transition);
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  height: 42px;
+}
+
+.custom-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.custom-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.funds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.fund-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: staggerIn 0.4s ease-out both;
+}
+
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
