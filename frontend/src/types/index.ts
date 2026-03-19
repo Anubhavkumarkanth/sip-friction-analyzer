@@ -51,3 +51,52 @@ export interface SimulationResult {
   chart_data: ChartDataPoint[];
 }
 
+// ==================== API Response Types ====================
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface SearchFundsResponse {
+  data: Fund[];
+  total: number;
+}
+
+export interface SimulationRequest {
+  monthly_amount: number;
+  annual_return: number;
+  years: number;
+  events?: FrictionEvent[];
+}
+
+// ==================== Component Props Types ====================
+export interface StatBoxProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  gradient: string;
+  prefix?: string;
+  suffix?: string;
+}
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+  className?: string;
+}
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+}
+
+export interface GlassCardProps {
+  children: React.ReactNode;
+  className?: string;
+  hoverEffect?: boolean;
+  style?: React.CSSProperties;
+}
