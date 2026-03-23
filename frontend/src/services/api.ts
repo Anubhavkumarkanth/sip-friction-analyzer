@@ -78,3 +78,68 @@ export const fundsAPI = {
   },
 };
 
+// ==================== Simulation API ====================
+export const simulationAPI = {
+  /**
+   * Run SIP simulation with given parameters
+   */
+  run: async (request: SimulationRequest): Promise<SimulationResult> => {
+    try {
+      const response = await apiClient.post<SimulationResult>(
+        '/simulate',
+        request
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error running simulation:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Run Monte Carlo simulation
+   */
+  monteCarlo: async (
+    monthlyAmount: number,
+    annualReturn: number,
+    years: number,
+    simulations = 1000,
+    volatility = 0.15
+  ): Promise<any> => {
+    try {
+      const response = await apiClient.post('/monte-carlo', {
+        monthly_amount: monthlyAmount,
+        annual_return: annualReturn,
+        years,
+        simulations,
+        volatility,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error running Monte Carlo:', error);
+      throw error;
+    }
+  },
+};
+
+// ==================== Error Handling Utility ====================
+export const handleApiError = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.data?.detail) {
+      return error.response.data.detail;
+    }
+    if (error.response?.status === 404) {
+      return 'Resource not found';
+    }
+    if (error.response?.status === 500) {
+      return 'Server error. Please try again later.';
+    }
+    if (error.message === 'Network Error') {
+      return 'Unable to connect to server';
+    }
+    return error.message || 'An error occurred';
+  }
+  return 'An unexpected error occurred';
+};
+
+export default apiClient;
