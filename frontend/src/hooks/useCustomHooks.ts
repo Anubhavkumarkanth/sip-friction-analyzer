@@ -43,3 +43,65 @@ export const useFetch = <T,>(
   return { ...state, refetch };
 };
 
+/**
+ * Custom hook for managing form state with validation
+ */
+export const useForm = <T extends Record<string, any>>(
+  initialValues: T,
+  onSubmit?: (values: T) => Promise<void>
+) => {
+  const [values, setValues] = useState<T>(initialValues);
+  const [errors, setErrors] = useState<Partial<T>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setValues((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (onSubmit) {
+        await onSubmit(values);
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const reset = () => {
+    setValues(initialValues);
+    setErrors({});
+    setTouched({});
+  };
+
+  return {
+    values,
+    errors,
+    touched,
+    isSubmitting,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    reset,
+    setValues,
+    setErrors,
+  };
+};
+
