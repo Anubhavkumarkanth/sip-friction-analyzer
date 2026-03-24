@@ -105,3 +105,38 @@ export const useForm = <T extends Record<string, any>>(
   };
 };
 
+/**
+ * Custom hook for managing async operations
+ */
+export const useAsync = <T,>(
+  asyncFunction: () => Promise<T>,
+  immediate = true
+) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<T | null>(null);
+
+  const execute = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await asyncFunction();
+      setData(result);
+      return result;
+    } catch (err) {
+      const errorMsg = handleApiError(err);
+      setError(errorMsg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [asyncFunction]);
+
+  useEffect(() => {
+    if (immediate) {
+      execute();
+    }
+  }, [execute, immediate]);
+
+  return { data, loading, error, execute };
+};
