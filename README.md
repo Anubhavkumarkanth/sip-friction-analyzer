@@ -171,6 +171,38 @@ That's the cost of pausing during downturns!
 
 ---
 
+## 🏗️ Project Structure
+
+```
+Sip Friction Analyzer/
+├── frontend/                    # React + Vite
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ui/             # Reusable: Button, Input, GlassCard
+│   │   │   ├── charts/         # Chart components
+│   │   │   └── layout/         # App layout
+│   │   ├── pages/              # Dashboard, FundExplorer, CompareFunds
+│   │   ├── services/           # API service layer (axios)
+│   │   ├── utils/              # Helpers (formatINR, etc.)
+│   │   ├── App.jsx             # Router
+│   │   └── main.jsx            # Entry point
+│   ├── package.json
+│   ├── vite.config.js
+│   └── README.md
+│
+├── engine/                      # Business logic
+│   ├── simulation.py           # SIPSimulator class
+│   └── friction.py             # Metric calculations (CCR, CLD, Score)
+│
+├── main.py                      # FastAPI app & routes
+├── models.py                    # SQLAlchemy models
+├── database.py                  # DB setup
+├── auth.py                      # JWT authentication
+└── test_backend.py             # Backend tests
+```
+
+---
+
 ## 🔌 API Endpoints
 
 ### Simulation
@@ -188,6 +220,29 @@ That's the cost of pausing during downturns!
 - `POST /auth/logout` - Token invalidation
 
 **API Documentation**: Visit `http://localhost:8000/docs` for interactive Swagger UI
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run backend tests
+pytest test_backend.py -v
+
+# Run frontend tests (coming soon)
+npm test
+```
+
+---
+
+## 🎨 Design System
+
+The UI uses a modern **glass-morphism** design with:
+- Glassmorphic cards with backdrop blur
+- Gradient accents (blue for growth, red for loss)
+- Smooth animations & transitions
+- Mobile-responsive grid layouts
+- Accessibility-friendly colors & contrast
 
 ---
 
