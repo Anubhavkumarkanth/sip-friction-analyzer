@@ -53,6 +53,77 @@ This is a **full-stack financial simulator** that educates investors about disci
 
 ---
 
+## 🛠️ Tech Stack
+
+**Frontend:**
+- React 19.2.4 with Vite (blazing fast builds)
+- Recharts for data visualization
+- Axios for API communication
+- Lucide icons for UI
+- CSS3 with glass-morphism design
+
+**Backend:**
+- FastAPI (Python, async)
+- SQLAlchemy ORM for data persistence
+- Pydantic for type validation
+- OAuth2 authentication ready
+- SQLite for portability
+
+**Algorithms:**
+- Monthly compounding interest formula
+- Event-based SIP friction modeling
+- CCR (Contribution Compliance Rate) calculation
+- Discipline scoring (weighted penalty function)
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+```bash
+Python 3.9+
+Node.js 16+
+npm or yarn
+```
+
+### Installation
+
+**1. Backend Setup**
+```bash
+# Navigate to backend
+cd "Sip Friction Analyzer"
+
+# Create virtual environment (optional but recommended)
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install fastapi uvicorn sqlalchemy pydantic python-dotenv
+
+# Run backend
+python main.py
+# Backend will start at http://localhost:8000
+```
+
+**2. Frontend Setup**
+```bash
+# Navigate to frontend
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+# Frontend will start at http://localhost:5173
+```
+
+**3. Access the Application**
+- Open browser: `http://localhost:5173`
+- API docs: `http://localhost:8000/docs` (Swagger UI)
+
+---
+
 ## 📖 How It Works
 
 ### 1. Configure Your SIP
