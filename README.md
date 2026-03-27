@@ -318,3 +318,34 @@ This project demonstrates:
 
 ---
 
+## 👨‍💼 For Recruiters
+
+This project showcases:
+✅ **Problem-solving**: Identified a real gap in investor education  
+✅ **Full-stack skills**: React, Python, SQL, design  
+✅ **Algorithm design**: Complex financial calculations  
+✅ **UI/UX**: Professional, responsive, accessible  
+✅ **Best practices**: TypeScript-ready, tested, documented  
+✅ **Deployment-ready**: Can be deployed to production  
+
+---
+
+## 📝 License
+
+MIT License - Feel free to use for educational purposes.
+
+---
+
+## 🤝 Contributing
+
+Got ideas? Found bugs? Open an issue or submit a PR!
+
+---
+
+## 📧 Contact
+
+Built with ❤️ by an aspiring fintech engineer.
+
+---
+
+**⭐ If you found this useful, please star the repo!**
