@@ -272,3 +272,49 @@ Weighted penalty combining:
 
 ---
 
+## 🚀 Deployment
+
+### Frontend (Vercel)
+```bash
+# Build production bundle
+cd frontend && npm run build
+
+# Deploy to Vercel (one-click from GitHub)
+```
+
+### Backend (Railway/Render)
+```bash
+# Create requirements.txt
+pip freeze > requirements.txt
+
+# Push to Railway or Render
+```
+
+---
+
+## 🔮 Roadmap
+
+- [ ] TypeScript migration for type safety
+- [ ] Unit tests (Jest + Pytest)
+- [ ] PDF export of simulation reports
+- [ ] User accounts & saved simulations
+- [ ] Real API data integration (MorningStar, ET Markets)
+- [ ] Mobile app (React Native)
+- [ ] AI-powered investor profile detection
+- [ ] Notifications for market events
+- [ ] Multi-currency support (USD, EUR, GBP)
+
+---
+
+## 💡 Key Learnings
+
+This project demonstrates:
+- **Full-stack development**: React + Python + SQL
+- **Financial algorithms**: Compound interest, event-based modeling
+- **UI/UX design**: Responsive, accessible, beautiful
+- **API design**: RESTful endpoints, proper error handling
+- **Database design**: Normalized schema with proper relationships
+- **Performance**: Client-side simulation for instant feedback (~240 calculations/run)
+
+---
+
