@@ -136,3 +136,113 @@ gcloud run deploy sip-analyzer \
 
 ---
 
+## Environment Variables
+
+**Production Frontend** (.env.production)
+```
+VITE_API_URL=https://api.yourdomain.com
+VITE_ENABLE_MONTE_CARLO=true
+VITE_ENABLE_INVESTOR_PROFILES=false
+```
+
+**Production Backend**
+```
+DATABASE_URL=postgresql://user:password@host:5432/sip_db
+DEBUG=false
+ALLOWED_ORIGINS=https://yourdomain.com
+```
+
+---
+
+## Database Management
+
+### Migrate from SQLite to PostgreSQL
+```python
+from sqlalchemy import create_engine
+from models import Base
+import json
+
+# Read SQLite
+sqlite_engine = create_engine("sqlite:///./app.db")
+
+
+# Write to PostgreSQL
+pg_engine = create_engine("postgresql://user:pass@host/db")
+Base.metadata.create_all(bind=pg_engine)
+
+# Migrate data
+with sqlite_engine.connect() as conn:
+    # Export and import data
+    pass
+```
+
+---
+
+## Performance Optimization
+
+### Frontend
+```bash
+# Build analysis
+npm run build -- --stats
+
+# Code splitting
+# Update vite.config.js:
+rollupOptions: {
+  output: {
+    manualChunks: {
+      'vendor': ['react', 'recharts'],
+      'util': ['utils/formatINR.ts']
+    }
+  }
+}
+```
+
+### Backend
+```python
+# Enable caching
+from fastapi_cache2 import FastAPICache2
+from fastapi_cache2.backends.redis import RedisBackend
+
+# Use connection pooling
+from sqlalchemy.pool import QueuePool
+
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=20,
+    max_overflow=40
+)
+```
+
+---
+
+## Monitoring
+
+### Sentry (Error Tracking)
+```python
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+sentry_sdk.init(
+    "https://key@sentry.io/project",
+    integrations=[FastApiIntegration()],
+    traces_sample_rate=0.1
+)
+```
+
+### Logging
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+```
+
+---
+
