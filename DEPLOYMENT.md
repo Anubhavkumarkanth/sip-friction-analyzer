@@ -1,0 +1,138 @@
+# Deployment Guide
+
+## Local Development
+
+### Quick Start
+```bash
+# Backend
+python main.py
+
+# Frontend (new terminal)
+cd frontend && npm run dev
+```
+
+Access at `http://localhost:5173`
+
+---
+
+## Docker Deployment
+
+### Build and Run
+```bash
+# Build image
+docker build -t sip-analyzer:latest .
+
+# Run container
+docker run -p 8000:8000 -e DATABASE_URL=sqlite:///./app.db sip-analyzer:latest
+```
+
+### Docker Compose
+```bash
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f backend
+
+# Stop services
+docker-compose down
+```
+
+---
+
+## Cloud Deployment
+
+### Option 1: Vercel (Frontend) + Railway (Backend)
+
+**Frontend Deployment (Vercel)**
+1. Push code to GitHub
+2. Connect repo to Vercel
+3. Set environment variable: `VITE_API_URL=https://your-backend-url`
+4. Deploy automatically on push
+
+**Backend Deployment (Railway)**
+1. Create Railway project
+2. Connect GitHub repo
+3. Add environment variables:
+   ```
+   DATABASE_URL=sqlite:///./app.db
+   ```
+4. Deploy from `main` branch
+5. Note the public URL
+
+### Option 2: Heroku (Full Stack)
+
+**Prepare**
+```bash
+# Create Procfile
+echo "web: uvicorn main:app --host 0.0.0.0 --port \$PORT" > Procfile
+
+# Create runtime.txt
+echo "python-3.11.6" > runtime.txt
+```
+
+**Deploy**
+```bash
+heroku login
+heroku create your-app-name
+git push heroku main
+heroku open
+```
+
+### Option 3: AWS (EC2 + RDS)
+
+**EC2 Setup**
+```bash
+# SSH into instance
+ssh -i key.pem ec2-user@instance-ip
+
+# Install dependencies
+sudo yum update -y
+sudo yum install python3.11 nodejs git -y
+
+# Clone repo
+git clone <url>
+cd "Sip Friction Analyzer"
+
+# Setup backend
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Setup frontend
+cd frontend
+npm install
+npm run build
+cd ..
+
+# Run with PM2
+npm install -g pm2
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "sip-analyzer"
+pm2 save
+```
+
+**RDS Integration**
+```python
+# Update database.py
+DATABASE_URL = "postgresql://user:password@rds-endpoint:5432/sip_analyzer"
+```
+
+### Option 4: Google Cloud Run (Serverless)
+
+```bash
+# Build Docker image
+docker build -t gcr.io/PROJECT_ID/sip-analyzer .
+
+# Push to Container Registry
+docker push gcr.io/PROJECT_ID/sip-analyzer
+
+# Deploy to Cloud Run
+gcloud run deploy sip-analyzer \
+  --image gcr.io/PROJECT_ID/sip-analyzer \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+---
+
