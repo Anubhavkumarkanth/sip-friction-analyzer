@@ -139,3 +139,60 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `test:` Adding/updating tests
 - `chore:` Dependency updates, tooling
 
+## Pull Request Process
+
+1. Update documentation if needed
+2. Add/update tests for new features
+3. Ensure all tests pass: `npm test`
+4. Ensure build passes: `npm run build`
+5. Request review from maintainers
+6. Address feedback and iterate
+
+## Reporting Issues
+
+When reporting bugs, please include:
+- Steps to reproduce
+- Expected behavior
+- Actual behavior
+- Screenshots/error logs
+- Environment details (OS, browser, versions)
+
+## Feature Requests
+
+When suggesting features, describe:
+- User problem being solved
+- Proposed solution
+- Alternative approaches considered
+- Impact on users
+
+## Technology Choices
+
+### Why TypeScript?
+- Type safety prevents runtime errors
+- Better IDE support and autocomplete
+- Easier refactoring
+- Self-documenting code
+
+### Why React + Vite?
+- Fast development experience
+- Excellent component reusability
+- Mature ecosystem
+- TypeScript support out of the box
+
+### Why FastAPI?
+- Modern async Python framework
+- Automatic API documentation
+- High performance
+- Type hints throughout
+
+## Questions?
+
+- Open a GitHub Issue for questions
+- Check existing issues before asking
+- Look at closed issues for resolved topics
+
+---
+
+**Thank you for contributing!** 🎉
+
+Your contributions make SIP Friction Analyzer better for everyone.
