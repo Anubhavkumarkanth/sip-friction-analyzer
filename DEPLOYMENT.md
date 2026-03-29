@@ -246,3 +246,74 @@ logging.basicConfig(
 
 ---
 
+## Security Checklist
+
+- [ ] Enable HTTPS in production
+- [ ] Set `DEBUG=False`
+- [ ] Configure CORS properly (not `*`)
+- [ ] Use environment variables for secrets
+- [ ] Implement rate limiting
+- [ ] Add authentication to endpoints
+- [ ] Validate all user inputs
+- [ ] Use security headers
+- [ ] Regular dependency updates
+- [ ] Database backups automated
+
+---
+
+## CI/CD Pipeline (GitHub Actions)
+
+Create `.github/workflows/deploy.yml`:
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: pytest test_backend.py
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: npm install -g @railway/cli && railway deploy
+```
+
+---
+
+## Cost Estimation (Monthly)
+
+| Service | Tier | Cost |
+|---------|------|------|
+| Vercel | Pro | $20 |
+| Railway | Pay-as-you-go | $5-20 |
+| PostgreSQL | Shared PostgreSQL | $12 |
+| **Total** | | **$37-52** |
+
+---
+
+## Support
+
+For deployment issues:
+1. Check logs: `docker-compose logs backend`
+2. Verify environment variables
+3. Test API: `curl http://localhost:8000/docs`
+4. Open GitHub Issue with:
+   - Error message
+   - Deployment platform
+   - Steps to reproduce
+
