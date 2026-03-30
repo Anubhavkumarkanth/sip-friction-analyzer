@@ -987,3 +987,113 @@ Output: Ideal: ₹48,24,567
 
 # DEPLOYMENT GUIDE
 
+## Option 1: Vercel (Fastest - Frontend Only)
+
+**Time**: 5 minutes
+
+### Steps
+1. Push code to GitHub
+2. Go to **vercel.com**
+3. Import GitHub repo
+4. Configure:
+   - Root Directory: `frontend`
+   - Build Command: `npm run build`
+   - Output: `dist`
+5. Set Environment:
+   - `VITE_API_URL=https://your-backend.com`
+6. Deploy! 🚀
+
+### Cost
+- Free tier includes up to 3 projects
+- Automatic deployments on every push
+
+---
+
+## Option 2: Railway (Backend + Database)
+
+**Time**: 10 minutes
+
+### Steps
+1. Go to **railway.app**
+2. New Project → GitHub
+3. Select your repo
+4. Railway auto-detects Python project
+5. Set Environment:
+   ```
+   DATABASE_URL=sqlite:///./app.db
+   ```
+6. Deploy! 🚀
+
+### Cost
+- Free tier: $5/month credits
+- Generous for projects like this
+
+---
+
+## Option 3: Docker (Full Stack - Locally or Server)
+
+**Time**: 2 minutes
+
+### Steps
+```bash
+# Build image
+docker build -t sip-analyzer .
+
+# Run container
+docker run -p 8000:8000 sip-analyzer
+
+# Frontend auto-served from /dist
+# Backend runs on :8000
+```
+
+### On Server
+```bash
+# SSH into server
+ssh user@server.com
+
+# Clone repo
+git clone <your-repo>
+cd sip-analyzer
+
+# Run
+docker-compose up -d
+
+# Runs in background, survives restarts
+```
+
+---
+
+## Option 4: Traditional Server (AWS EC2, DigitalOcean)
+
+**Time**: 30 minutes
+
+### Steps
+1. Launch Ubuntu instance
+2. Install dependencies:
+   ```bash
+   apt-get install python3.11 nodejs npm
+   ```
+3. Clone repo
+4. Install packages:
+   ```bash
+   pip install -r requirements.txt
+   cd frontend && npm install
+   ```
+5. Build frontend:
+   ```bash
+   npm run build
+   ```
+6. Run backend:
+   ```bash
+   nohup python main.py &
+   ```
+7. Serve frontend:
+   ```bash
+   # Copy dist/ to nginx
+   # Or use FastAPI StaticFiles
+   ```
+
+---
+
+# RECRUITER VALUE PROPOSITION
+
