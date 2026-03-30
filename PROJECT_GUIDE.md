@@ -413,3 +413,309 @@ const { data, loading, error } = useFetch(fetchFn, deps)
 
 ---
 
+## STAGE 5: Testing & Quality Assurance ✅
+
+### What Was Added
+
+**1. Jest Configuration**
+```
+jest.config.js         ← Test runner setup
+setupTests.ts          ← Test environment
+```
+
+**2. Unit Tests**
+
+**Test Suite #1: SIP Calculator** (`sipCalculator.test.ts`)
+```
+✓ calculateSIPSimulation
+  ✓ Basic 1-year calculation
+  ✓ 20-year long-term calculation
+  ✓ Handles 0% return
+  ✓ Validates positive wealth growth
+  ✓ Chart data has 12 annual points
+  ✓ Wealth monotonically increases
+  ✓ Handles edge cases (very high returns)
+```
+
+**Test Suite #2: Currency Formatter** (`formatINR.test.ts`)
+```
+✓ formatINR
+  ✓ Formats thousands as K (₹1.0K)
+  ✓ Formats lakhs as L (₹1.23L)
+  ✓ Formats crores as Cr (₹1.00Cr)
+  ✓ Handles negative values (-₹10.0K)
+  ✓ Handles null/NaN safely
+  ✓ Works with decimal values
+
+✓ formatINRAxis
+  ✓ Formats for chart axes
+  ✓ Accepts string inputs
+```
+
+### Command
+```bash
+npm test                    # Run all tests once
+npm test -- --coverage      # Show coverage %
+npm test -- --watch        # Watch mode (re-run on changes)
+```
+
+### WHY IT WAS NEEDED
+
+#### Problem #1: Hidden Bugs
+- Code looks correct but behaves wrong at runtime
+- Only caught when user finds it
+- Example: `₹0` appearing everywhere (earlier issue)
+
+#### Solution: Tests Catch Bugs Early
+```typescript
+// Test: formatINR(10000) should return "₹10.0K"
+// If formula broken → Test fails → Fix before user sees it
+```
+
+#### Problem #2: Refactoring Fear
+- Changing code risks breaking something
+- With tests → Confidence in changes
+- Without tests → Walking on eggshells
+
+#### Problem #3: Documentation Through Tests
+```typescript
+// Tests show HOW to use the function
+// And WHAT it should return
+const { result } = calculateSIPSimulation(10000, 12, 20)
+expect(result.ccr).toBe(1)              // Shows CCR meaning
+expect(result.chart_data).toHaveLength(20) // Shows structure
+```
+
+### Recruiter Impression
+> "They write tests - they think about edge cases and quality. They care about maintainability."
+
+---
+
+## STAGE 6: Environment & Configuration ✅
+
+### What Was Added
+
+**1. Environment Variables**
+```
+.env.example       ← Template for developers
+.env.local        ← Personal development config
+```
+
+**Content:**
+```ini
+VITE_API_URL=http://localhost:8000
+VITE_ENABLE_MONTE_CARLO=true
+VITE_ENABLE_INVESTOR_PROFILES=false
+```
+
+**2. Vite Configuration Enhanced**
+```javascript
+// vite.config.js
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),  // @/utils → src/utils
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+})
+```
+
+**3. Git Ignore Updated**
+```
+# Environment
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+.cache
+
+# Testing
+coverage/
+
+# IDE
+.vscode/*
+.idea/
+
+# OS
+.DS_Store
+```
+
+### WHY IT WAS NEEDED
+
+#### Problem #1: Hardcoded Values
+```javascript
+// Bad: API URL hardcoded
+const API = 'http://localhost:8000'  // What about production?
+```
+
+#### Solution: Environment Variables
+```javascript
+const API = import.meta.env.VITE_API_URL
+// Works everywhere (local, staging, production)
+```
+
+#### Problem #2: Secrets in Code
+- API keys in code → Check into GitHub → Exposed → Hacked
+- Environment variables → Never in GitHub → Secure
+
+#### Problem #3: Different Environments
+```
+Local:      http://localhost:8000
+Staging:    https://staging-api.example.com
+Production: https://api.example.com
+
+Same code, different config ✓
+```
+
+### Recruiter Impression
+> "They understand environment separation and security - production-ready thinking."
+
+---
+
+## STAGE 7: Containerization & Deployment ✅
+
+### What Was Added
+
+**1. Dockerfile** (Multi-stage build)
+```dockerfile
+# Stage 1: Build frontend
+FROM node:20-alpine
+# ... npm install, npm build
+# Result: frontend/dist/
+
+# Stage 2: Backend with frontend
+FROM python:3.11-slim
+# ... pip install, copy backend
+# ... copy dist/ from stage 1
+# Expose port 8000
+```
+
+**2. Docker Compose**
+```yaml
+services:
+  backend:
+    build: .
+    ports: ["8000:8000"]
+    volumes: [".:/app"]      # Hot reload
+    healthcheck: ...          # Monitor health
+    
+  frontend:                   # Optional dev
+    ports: ["5173:5173"]
+    volumes: ["./src:/app/src"]
+```
+
+**3. Updated Requirements**
+```
+fastapi==0.109.0
+uvicorn==0.27.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+python-dotenv==1.0.0
+```
+
+### WHY IT WAS NEEDED
+
+#### Problem #1: "Works on My Machine"
+```
+❌ Dev machine: Windows + Python 3.11 + specific packages
+❌ Friend's machine: macOS + Python 3.9 → Broken
+❌ Server: Ubuntu + different packages → Broken
+
+✓ Docker: Same environment everywhere
+```
+
+#### Problem #2: Manual Deployment
+- SSH into server
+- Clone repo
+- Install Python packages
+- Install Node packages
+- Run migrations
+- Start services
+- Monitor logs
+**Result**: Error-prone, takes 30 mins
+
+#### Solution: Docker
+```bash
+docker build -t sip-analyzer .
+docker run -p 8000:8000 sip-analyzer
+
+# Done in 2 minutes, 100% reproducible
+```
+
+#### Problem #3: Dependency Hell
+- Python package conflicts
+- Node package conflicts
+- Different OS, different results
+
+#### Solution: Docker Isolation
+- One container = everything pre-configured
+- Same behavior everywhere
+
+### Recruiter Impression
+> "They can dockerize applications - understands deployment workflow and DevOps basics."
+
+---
+
+## STAGE 8: Package.json & Dependencies ✅
+
+### What Was Updated
+
+**Updated package.json**
+```json
+{
+  "name": "sip-friction-analyzer",  // Was: "frontend"
+  "description": "Advanced financial simulator...",
+  "version": "1.0.0",               // Was: "0.0.0"
+  
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",   // NEW
+    "test": "jest",                  // NEW
+    "test:watch": "jest --watch"     // NEW
+  },
+  
+  "dependencies": {
+    // ... existing...
+    "react-is": "^18.2.0"            // Added (needed by recharts)
+  },
+  
+  "devDependencies": {
+    "typescript": "^5.3.3",          // NEW
+    "@types/jest": "^29.5.11",       // NEW
+    "jest": "^29.7.0",               // NEW
+    "@testing-library/react": "^14.1.2", // NEW
+    "ts-jest": "^29.1.1",            // NEW
+    // ... other libraries
+  }
+}
+```
+
+### Build Output (Proof of Success)
+```
+vite v8.0.0 building client environment...
+✓ 2363 modules transformed
+✓ dist/index.html          0.64 kB | gzip: 0.39 kB
+✓ dist/assets/index-*.js   674 kB  | gzip: 205 kB
+✓ built in 667ms
+```
+
+### Recruiter Impression
+> "Project versioning follows semver. Dependencies thoughtfully chosen. Production-ready build."
+
+---
+
+# WHY EACH UPGRADE WAS NEEDED
+
