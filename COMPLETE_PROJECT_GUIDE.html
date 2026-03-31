@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP Friction Analyzer - Complete Project Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            line-height: 1.8;
+            color: #333;
+            background-color: white;
+            padding: 40px;
+            font-size: 12pt;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+        }
+        
+        h1 {
+            font-size: 28pt;
+            font-weight: bold;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 3px solid #333;
+            padding-bottom: 10px;
+            page-break-after: avoid;
+        }
+        
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            border-left: 5px solid #333;
+            padding-left: 10px;
+            page-break-after: avoid;
+        }
+        
+        h3 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #444;
+            page-break-after: avoid;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+            letter-spacing: 0.5px;
+        }
+        
+        .section-break {
+            page-break-before: always;
+        }
+        
+        .table-of-contents {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border: 2px solid #333;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        
+        .toc-item {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        .toc-item.level2 {
+            padding-left: 40px;
+            font-size: 11pt;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        table, th, td {
+            border: 1px solid #333;
+        }
+        
+        th {
+            background-color: #e0e0e0;
+            padding: 10px;
+            font-weight: bold;
+            text-align: left;
+        }
+        
+        td {
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .code-block {
+            background-color: #f9f9f9;
+            border-left: 4px solid #333;
+            padding: 12px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11pt;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+        
+        .highlight {
+            background-color: #ffffcc;
+            padding: 2px 4px;
+            font-weight: bold;
+        }
+        
+        .definition {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 5px solid #0066cc;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .key-point {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-left: 5px solid #ffc107;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            padding: 15px;
+            border-left: 5px solid #28a745;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        .architecture-diagram {
+            background-color: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #333;
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+            page-break-inside: avoid;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .date-stamp {
+            text-align: right;
+            font-style: italic;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #333;
+            text-align: center;
+            font-size: 11pt;
+        }
+        
+        .intro-header {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+        }
+        
+        .step-numbering {
+            display: inline-block;
+            background-color: #333;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 25px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .tip {
+            background-color: #e7f3ff;
+            padding: 12px;
+            border-left: 4px solid #2196F3;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- TITLE PAGE -->
+<div style="text-align: center; margin: 60px 0;">
+    <h1 style="border: none; margin: 40px 0;">SIP FRICTION ANALYZER</h1>
+    <p style="font-size: 16pt; font-weight: bold; margin: 20px 0;">Complete Project Documentation</p>
+    <p style="font-size: 14pt; margin: 10px 0;">From Backend to Frontend: Everything Explained</p>
+    <p style="font-size: 12pt; margin: 30px 0;">A Comprehensive Guide for Understanding and Explaining the Project</p>
+    <div style="margin-top: 60px;">
+        <p style="font-size: 11pt;">Prepared for: Interview Preparation & Project Understanding</p>
+        <p style="font-size: 11pt; margin-top: 10px;">Date: March 2026</p>
+    </div>
+</div>
+
+<div class="section-break"></div>
+
+<!-- TABLE OF CONTENTS -->
+<h2>Table of Contents</h2>
+<div class="table-of-contents">
+    <div class="toc-item"><strong>1. Executive Summary</strong></div>
+    <div class="toc-item"><strong>2. What is SIP Friction Analyzer?</strong></div>
+    <div class="toc-item"><strong>3. Technology Stack Overview</strong></div>
+    <div class="toc-item"><strong>4. Backend Architecture & Components</strong></div>
+    <div class="toc-item"><strong>5. Frontend Architecture & Components</strong></div>
+    <div class="toc-item"><strong>6. Database Design</strong></div>
+    <div class="toc-item"><strong>7. API Endpoints & Data Flow</strong></div>
+    <div class="toc-item"><strong>8. How Everything Works Together</strong></div>
+    <div class="toc-item"><strong>9. Key Features Explained in Detail</strong></div>
+    <div class="toc-item"><strong>10. Code Quality & Best Practices</strong></div>
+    <div class="toc-item"><strong>11. Deployment & Infrastructure</strong></div>
+    <div class="toc-item"><strong>12. Why We Made These Choices</strong></div>
+    <div class="toc-item"><strong>13. Interview Preparation Guide</strong></div>
+</div>
+
+<!-- SECTION 1: EXECUTIVE SUMMARY -->
+<div class="section-break"></div>
+<h2>1. Executive Summary</h2>
+
+<div class="definition">
+    <strong>SIP Friction Analyzer:</strong> A full-stack web application that simulates Systematic Investment Plan (SIP) wealth accumulation and quantifies the financial impact of investor indiscipline through interactive visualization and mathematical modeling.
+</div>
+
+<h3>Project Scope</h3>
+<ul>
+    <li><strong>Frontend:</strong> React 19.2.4 with TypeScript, Vite bundler, Recharts visualization</li>
+    <li><strong>Backend:</strong> FastAPI (Python async web framework), SQLAlchemy ORM, SQLite database</li>
+    <li><strong>Core Feature:</strong> Month-by-month SIP simulation with event-based friction modeling</li>
+    <li><strong>Quality Assurance:</strong> Jest unit tests, TypeScript strict mode, comprehensive error handling</li>
+    <li><strong>Deployment:</strong> Docker containerization, docker-compose for local development</li>
+    <li><strong>Documentation:</strong> 1500+ lines across README, CONTRIBUTING, and DEPLOYMENT guides</li>
+</ul>
+
+<h3>Key Achievement</h3>
+<p>Built a production-ready financial application demonstrating full-stack development expertise, from database design through user interface, with professional-grade code organization, testing, and deployment infrastructure.</p>
+
+<!-- SECTION 2: WHAT IS SIP FRICTION ANALYZER -->
+<div class="section-break"></div>
+<h2>2. What is SIP Friction Analyzer?</h2>
+
+<h3>The Problem It Solves</h3>
+<p>Most individual investors fail to maintain discipline in their Systematic Investment Plans (SIPs). During market downturns, they pause contributions, reduce amounts, or skip months. These actions create "friction" that compounds negatively over years, resulting in substantial wealth loss that many investors never quantify or understand.</p>
+
+<div class="key-point">
+    <strong>Key Insight:</strong> An investor with perfect discipline earning 12% annual return accumulating ₹48 lakhs over 20 years may only achieve ₹39 lakhs if they pause their SIP for 12 months during a market crash. That is a loss of ₹9 lakhs—nearly 19% of potential wealth—all because of one year of pausing.
+</div>
+
+<h3>The Solution</h3>
+<p>SIP Friction Analyzer provides an interactive tool where investors can:</p>
+<ol>
+    <li>Specify their monthly investment amount</li>
+    <li>Input their expected annual return percentage</li>
+    <li>Define their investment period (years)</li>
+    <li>Add "friction events" (pause SIP, reduce contribution, skip months)</li>
+    <li>See side-by-side comparison: ideal wealth vs. actual wealth with friction</li>
+    <li>Understand the financial cost of indiscipline through visualizations and metrics</li>
+</ol>
+
+<h3>The Output</h3>
+<p>The application generates:</p>
+<table>
+    <tr>
+        <th>Output Element</th>
+        <th>What It Shows</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>Interactive Area Chart</td>
+        <td>Blue line (ideal) vs Red line (actual) vs Grey area (loss)</td>
+        <td>Visual understanding of friction impact over time</td>
+    </tr>
+    <tr>
+        <td>Ideal Wealth</td>
+        <td>Money accumulated with perfect discipline</td>
+        <td>Benchmark for comparison</td>
+    </tr>
+    <tr>
+        <td>Actual Wealth</td>
+        <td>Money accumulated with friction events</td>
+        <td>Realistic outcome</td>
+    </tr>
+    <tr>
+        <td>Compounding Loss</td>
+        <td>Absolute ₹ amount lost due to friction</td>
+        <td>Quantifies financial impact</td>
+    </tr>
+    <tr>
+        <td>CCR (Contribution Compliance Rate)</td>
+        <td>Percentage of planned contributions actually made</td>
+        <td>Measures discipline level</td>
+    </tr>
+    <tr>
+        <td>Discipline Score</td>
+        <td>0-100 score combining CCR and compounding loss</td>
+        <td>Holistic discipline metric</td>
+    </tr>
+</table>
+
+<!-- SECTION 3: TECHNOLOGY STACK -->
+<div class="section-break"></div>
+<h2>3. Technology Stack Overview</h2>
+
+<h3>Why We Chose Each Technology</h3>
+
+<div class="definition">
+    <strong>Technology Stack Definition:</strong> The collection of software tools, frameworks, languages, and libraries chosen to build a complete application, selected based on project requirements, developer experience, and production readiness.
+</div>
+
+<h3>Frontend Technologies</h3>
+
+<table>
+    <tr>
+        <th>Technology</th>
+        <th>Version</th>
+        <th>Purpose</th>
+        <th>Why Chosen</th>
+    </tr>
+    <tr>
+        <td>React</td>
+        <td>19.2.4</td>
+        <td>UI Framework</td>
+        <td>Component reusability, large ecosystem, best for interactive dashboards</td>
+    </tr>
+    <tr>
+        <td>TypeScript</td>
+        <td>5.3.3</td>
+        <td>Type Safety</td>
+        <td>Catch errors at development time, better IDE support, self-documenting code</td>
+    </tr>
+    <tr>
+        <td>Vite</td>
+        <td>8.0.0</td>
+        <td>Build Tool</td>
+        <td>Lightning-fast builds (667ms), instant HMR (hot module reload)</td>
+    </tr>
+    <tr>
+        <td>Recharts</td>
+        <td>3.8.0</td>
+        <td>Data Visualization</td>
+        <td>Lightweight, financial-grade charts, excellent for area charts</td>
+    </tr>
+    <tr>
+        <td>Axios</td>
+        <td>1.13.6</td>
+        <td>HTTP Client</td>
+        <td>Simpler than Fetch API, built-in interceptors for error handling</td>
+    </tr>
+    <tr>
+        <td>React Router</td>
+        <td>7.13.1</td>
+        <td>Routing</td>
+        <td>Multi-page navigation (Dashboard, Funds Explorer, Compare)</td>
+    </tr>
+    <tr>
+        <td>Jest</td>
+        <td>29.7.0</td>
+        <td>Testing Framework</td>
+        <td>Industry standard, zero-config, great React support</td>
+    </tr>
+</table>
+
+<h3>Backend Technologies</h3>
+
+<table>
+    <tr>
+        <th>Technology</th>
+        <th>Purpose</th>
+        <th>Why Chosen</th>
+    </tr>
+    <tr>
+        <td>FastAPI</td>
+        <td>Web Framework</td>
+        <td>Modern async Python, automatic API documentation (Swagger), type hints built-in</td>
+    </tr>
+    <tr>
+        <td>SQLAlchemy</td>
+        <td>Database ORM</td>
+        <td>Powerful abstraction, handles complex queries, schema migrations</td>
+    </tr>
+    <tr>
+        <td>Pydantic</td>
+        <td>Data Validation</td>
+        <td>Type hints for request/response validation, automatic error messages</td>
+    </tr>
+    <tr>
+        <td>SQLite</td>
+        <td>Database</td>
+        <td>Lightweight, file-based, perfect for portfolios and learning</td>
+    </tr>
+    <tr>
+        <td>Uvicorn</td>
+        <td>ASGI Server</td>
+        <td>High-performance async server, handles multiple concurrent requests</td>
+    </tr>
+</table>
+
+<h3>Infrastructure & DevOps</h3>
+
+<table>
+    <tr>
+        <th>Technology</th>
+        <th>Purpose</th>
+        <th>Benefit</th>
+    </tr>
+    <tr>
+        <td>Docker</td>
+        <td>Containerization</td>
+        <td>Same environment everywhere (dev, staging, production)</td>
+    </tr>
+    <tr>
+        <td>docker-compose</td>
+        <td>Orchestration</td>
+        <td>Run multiple services with single command</td>
+    </tr>
+    <tr>
+        <td>Git</td>
+        <td>Version Control</td>
+        <td>Track changes, collaborate, rollback if needed</td>
+    </tr>
+</table>
+
+<!-- SECTION 4: BACKEND ARCHITECTURE -->
+<div class="section-break"></div>
