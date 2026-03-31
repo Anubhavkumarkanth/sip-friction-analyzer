@@ -454,3 +454,766 @@
 
 <!-- SECTION 4: BACKEND ARCHITECTURE -->
 <div class="section-break"></div>
+<h2>4. Backend Architecture & Components</h2>
+
+<h3>Backend Structure Overview</h3>
+
+<div class="architecture-diagram">
+Backend Project Root/
+├── main.py                    ← FastAPI application & routes
+├── models.py                  ← Database models (SQLAlchemy)
+├── database.py                ← Database connection setup
+├── auth.py                    ← JWT authentication logic
+├── requirements.txt           ← Python dependencies
+├── engine/
+│   ├── simulation.py          ← SIP calculation engine
+│   └── friction.py            ← Metrics (CCR, CLD, Score)
+└── test_backend.py            ← Backend tests
+</div>
+
+<h3>Core Backend Files Explained</h3>
+
+<h4>1. main.py - FastAPI Application</h4>
+<p><strong>Purpose:</strong> Entry point for backend, defines all API routes and business logic.</p>
+
+<div class="key-point">
+    <strong>What It Does:</strong> 
+    <ul>
+        <li>Sets up FastAPI application instance</li>
+        <li>Configures CORS middleware (allows frontend requests)</li>
+        <li>Defines REST API endpoints</li>
+        <li>Handles request/response validation with Pydantic</li>
+        <li>Manages database sessions</li>
+    </ul>
+</div>
+
+<p><strong>Key Endpoints:</strong></p>
+<div class="code-block">
+POST   /simulate              ← Run SIP simulation
+POST   /monte-carlo           ← Monte Carlo simulation
+GET    /search-funds          ← Search funds
+GET    /funds                 ← List all funds
+GET    /funds/{id}            ← Get fund details
+POST   /auth/login            ← Login (prepared for future)
+</div>
+
+<h4>2. models.py - Database Models</h4>
+<p><strong>Purpose:</strong> Defines database table structures using SQLAlchemy ORM.</p>
+
+<div class="definition">
+<strong>ORM (Object-Relational Mapping):</strong> Converts database records into Python objects, allowing you to work with databases using Python code instead of SQL queries.
+</div>
+
+<p><strong>Models in the Database:</strong></p>
+
+<div class="code-block">
+Fund:
+  - id (Primary Key)
+  - name (str)
+  - category (str)
+  - risk_level (str: Low/Medium/High)
+  - return_1y, return_3y, return_5y (float)
+  - expense_ratio (float)
+  - platform (str: Groww/Zerodha/Angel One)
+  - aum (Assets Under Management)
+  - benchmark (str)
+
+Simulation:
+  - id (Primary Key)
+  - user_id (Foreign Key to User)
+  - monthly_amount (float)
+  - annual_return (float)
+  - years (int)
+  - events (JSON: list of friction events)
+  - results (JSON: simulation output)
+  - created_at (datetime)
+
+User (prepared for future authentication):
+  - id (Primary Key)
+  - email (str, unique)
+  - hashed_password (str)
+  - created_at (datetime)
+</div>
+
+<h4>3. database.py - Database Connection</h4>
+<p><strong>Purpose:</strong> Establishes SQLite database connection and creates tables.</p>
+
+<div class="code-block">
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "sqlite:///./app.db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+
+# Auto-create tables on startup
+Base.metadata.create_all(bind=engine)
+</div>
+
+<h4>4. Simulation Engine - engine/simulation.py</h4>
+<p><strong>Purpose:</strong> Contains SIPSimulator class with core financial calculations.</p>
+
+<div class="definition">
+<strong>SIP (Systematic Investment Plan):</strong> A method of investing a fixed amount of money in mutual funds at regular intervals (monthly, quarterly, etc.).
+
+Formula: Future Value = P × {[(1 + r)^n - 1] / r} × (1 + r)
+Where: P = monthly amount, r = monthly return, n = number of months
+</div>
+
+<p><strong>SIPSimulator Class Methods:</strong></p>
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Input</th>
+        <th>Output</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>calculate_ideal()</td>
+        <td>None (uses constructor params)</td>
+        <td>List of monthly values</td>
+        <td>Calculates wealth with perfect discipline</td>
+    </tr>
+    <tr>
+        <td>calculate_actual(events)</td>
+        <td>List of friction events</td>
+        <td>List of monthly values</td>
+        <td>Calculates wealth with friction events</td>
+    </tr>
+    <tr>
+        <td>monte_carlo(events, simulations)</td>
+        <td>Events, simulation count</td>
+        <td>Distribution of outcomes</td>
+        <td>Runs 1000+ iterations with market volatility</td>
+    </tr>
+</table>
+
+<h4>5. Metrics Engine - engine/friction.py</h4>
+<p><strong>Purpose:</strong> Calculates financial metrics that measure investor discipline.</p>
+
+<p><strong>Three Key Metrics:</strong></p>
+
+<div class="key-point">
+    <strong>1. CCR (Contribution Compliance Rate)</strong>
+    <ul>
+        <li>Formula: Total Actual Contributions / Total Expected Contributions</li>
+        <li>Range: 0 to 1 (0% to 100%)</li>
+        <li>Example: If you planned ₹2.4L (12 months × ₹20K) but only contributed ₹2.1L, CCR = 87.5%</li>
+        <li>Interpretation: How much of planned investment was actually made</li>
+    </ul>
+</div>
+
+<div class="key-point">
+    <strong>2. CLD (Compounding Loss Difference)</strong>
+    <ul>
+        <li>Formula: Ideal Wealth - Actual Wealth</li>
+        <li>Range: 0 to Ideal Amount</li>
+        <li>Example: If ideal is ₹48L but actual is ₹39L, CLD = ₹9L</li>
+        <li>Interpretation: Absolute rupee amount lost due to friction</li>
+    </ul>
+</div>
+
+<div class="key-point">
+    <strong>3. Discipline Score</strong>
+    <ul>
+        <li>Formula: 100 - (40 × (1 - CCR) + 60 × (CLD / Ideal))</li>
+        <li>Range: 0 to 100</li>
+        <li>Weighting: 40% from contribution compliance, 60% from compounding impact</li>
+        <li>Interpretation: Overall discipline score; higher is better</li>
+        <li>Colored: Green (≥90), Yellow (60-90), Red (&lt;60)</li>
+    </ul>
+</div>
+
+<!-- SECTION 5: FRONTEND ARCHITECTURE -->
+<div class="section-break"></div>
+<h2>5. Frontend Architecture & Components</h2>
+
+<h3>Frontend Project Structure</h3>
+
+<div class="architecture-diagram">
+frontend/src/
+├── pages/
+│   ├── Dashboard.tsx          ← Main SIP simulator
+│   ├── FundExplorer.jsx       ← Fund search & browse
+│   ├── CompareFunds.jsx       ← Compare 2 funds
+│   └── MonteCarlo.jsx         ← Advanced simulation
+├── components/
+│   ├── ui/
+│   │   ├── Button.tsx         ← Button component
+│   │   ├── Input.tsx          ← Input field component
+│   │   └── GlassCard.tsx      ← Card container
+│   └── layout/
+│       └── AppLayout.jsx      ← Navigation + routing
+├── services/
+│   └── api.ts                 ← API client (NEW)
+├── hooks/
+│   └── useCustomHooks.ts      ← Custom React hooks (NEW)
+├── types/
+│   └── index.ts               ← TypeScript interfaces (NEW)
+├── utils/
+│   ├── formatINR.ts           ← Currency formatter
+│   └── sipCalculator.ts       ← SIP math engine
+├── __tests__/                 ← Unit tests
+│   ├── sipCalculator.test.ts
+│   └── formatINR.test.ts
+├── App.tsx                    ← Router & layout
+├── main.tsx                   ← Entry point
+└── index.css                  ← Global styles
+</div>
+
+<h3>Component Hierarchy & Responsibility</h3>
+
+<h4>Dashboard.tsx - Main Page (240+ lines, TypeScript)</h4>
+<p><strong>Responsibility:</strong> Manages SIP simulation UI and business logic.</p>
+
+<p><strong>What It Does:</strong></p>
+<ul>
+    <li>Renders input form (Monthly Amount, Annual Return, Years)</li>
+    <li>Manages friction events (Pause, Step-up, Reduce)</li>
+    <li>Validates user input before calculation</li>
+    <li>Runs SIP simulation month-by-month</li>
+    <li>Calculates metrics (CCR, Discipline Score, Compounding Loss)</li>
+    <li>Generates chart data for visualization</li>
+    <li>Displays results with stat cards and charts</li>
+    <li>Integrates with Fund Explorer (prefill returns)</li>
+</ul>
+
+<p><strong>State Management:</strong></p>
+<div class="code-block">
+const [inputs, setInputs] = useState({
+  monthly_amount: '10000',
+  annual_return: '12',
+  years: '20'
+})
+
+const [events, setEvents] = useState([])
+const [results, setResults] = useState(null)
+const [loading, setLoading] = useState(false)
+const [validationErrors, setValidationErrors] = useState({})
+</div>
+
+<p><strong>Key Functions:</strong></p>
+<table>
+    <tr>
+        <th>Function</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>handleInputChange()</td>
+        <td>Update input state when user types</td>
+    </tr>
+    <tr>
+        <td>validateInputs()</td>
+        <td>Check if monthly/return/years are positive and in valid range</td>
+    </tr>
+    <tr>
+        <td>runSimulation()</td>
+        <td>Core logic: execute 240 month-by-month calculations</td>
+    </tr>
+    <tr>
+        <td>addEvent()</td>
+        <td>Add friction event (pause, reduce, step-up)</td>
+    </tr>
+    <tr>
+        <td>searchPlatformFunds()</td>
+        <td>Call API to search funds by platform</td>
+    </tr>
+</table>
+
+<h4>The runSimulation() Function - Core Logic</h4>
+<p><strong>This is the heart of the application. Here's how it works:</strong></p>
+
+<div class="key-point">
+<strong>Step-by-Step Simulation Process:</strong>
+
+<strong>1. Parse Inputs</strong>
+<div style="background: white; padding: 10px; margin: 5px 0;">
+Monthly Amount: 10,000 → parseFloat() → 10000
+Annual Return: 12 → parseFloat() → 12
+Years: 20 → parseFloat() → 20
+</div>
+
+<strong>2. Setup Loop Variables</strong>
+<div style="background: white; padding: 10px; margin: 5px 0;">
+monthlyReturn = 12% / 12 = 1% per month = 0.01
+totalMonths = 20 × 12 = 240 months
+idealValue = 0
+actualValue = 0
+</div>
+
+<strong>3. Run 240 Iterations (one per month)</strong>
+<div style="background: white; padding: 10px; margin: 5px 0;">
+FOR month = 1 TO 240:
+  a) Ideal: idealValue = (idealValue + 10000) × (1 + 0.01)
+  b) Actual: 
+     - Start with contribution = 10000
+     - Check pause ranges (if month in range, contribution = 0)
+     - Check friction events (reduce, skip, increase)
+     - Apply: actualValue = (actualValue + contribution) × (1 + 0.01)
+  c) Every 12 months: Record data point for chart
+END FOR
+</div>
+
+<strong>4. Calculate Metrics</strong>
+<div style="background: white; padding: 10px; margin: 5px 0;">
+cld = idealValue - actualValue
+ccr = totalActual / totalExpected
+discipline_score = 100 - (40×(1-ccr) + 60×(cld/ideal))
+</div>
+
+<strong>5. Generate Chart Data</strong>
+<div style="background: white; padding: 10px; margin: 5px 0;">
+chartData = [
+  { year: 1, ideal: 127,500, actual: 125,000, difference: 2,500 },
+  { year: 2, ideal: 265,250, actual: 258,750, difference: 6,500 },
+  ...
+  { year: 20, ideal: 48,24,567, actual: 39,18,420, difference: 9,06,147 }
+]
+</div>
+</div>
+
+<h4>FundExplorer.jsx</h4>
+<p><strong>Responsibility:</strong> Search and display mutual funds.</p>
+
+<ul>
+    <li>Search input for fund name</li>
+    <li>Filter chips for platforms (Groww, Zerodha, Angel One)</li>
+    <li>Filter for risk level</li>
+    <li>Display fund cards with key metrics</li>
+    <li>"Detailed Analysis" button: Navigates to Dashboard with fund data</li>
+    <li>"Compare" button: Adds to comparison list</li>
+</ul>
+
+<h4>CompareFunds.jsx</h4>
+<p><strong>Responsibility:</strong> Compare two funds side-by-side.</p>
+
+<ul>
+    <li>Display two funds in columns</li>
+    <li>Show metrics: Risk, 3Y Return, 5Y Return, Expense Ratio, Platform</li>
+    <li>Highlight the better metric in each category</li>
+    <li>"Simulate This Fund" button: Pre-fill that fund's returns in Dashboard</li>
+</ul>
+
+<h4>UI Components</h4>
+
+<p><strong>Button.tsx:</strong> Reusable button with loading state</p>
+<div class="code-block">
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'outline'
+  size?: 'sm' | 'md' | 'lg'
+  loading?: boolean
+  disabled?: boolean
+  children: React.ReactNode
+}
+
+// Usage:
+&lt;Button onClick={runSimulation} loading={loading}&gt;
+  Run Simulation
+&lt;/Button&gt;
+</div>
+
+<p><strong>Input.tsx:</strong> Form input with error messages</p>
+<div class="code-block">
+interface InputProps {
+  label?: string
+  error?: string
+  type?: string
+  value: string | number
+  onChange: (e) => void
+}
+
+// Usage:
+&lt;Input
+  label="Monthly Amount (₹)"
+  value={inputs.monthly_amount}
+  onChange={handleInputChange}
+  error={validationErrors.monthly_amount}
+/&gt;
+</div>
+
+<p><strong>GlassCard.tsx:</strong> Container with glass-morphism effect</p>
+<div class="code-block">
+interface GlassCardProps {
+  children: React.ReactNode
+  hoverEffect?: boolean
+  style?: React.CSSProperties
+}
+
+// Creates frosted glass effect with backdrop blur
+// Used for sections, stat boxes, and content cards
+</div>
+
+<!-- SECTION 6: DATABASE DESIGN -->
+<div class="section-break"></div>
+<h2>6. Database Design</h2>
+
+<h3>Database Schema</h3>
+
+<div class="definition">
+<strong>Schema:</strong> The structure/blueprint of a database defining what tables exist, what columns each has, what data types they store, and relationships between tables.
+</div>
+
+<h3>Table: funds</h3>
+<div class="code-block">
+CREATE TABLE funds (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  category VARCHAR(100),
+  risk_level VARCHAR(50),          -- 'Low', 'Medium', 'High'
+  return_1y FLOAT,
+  return_3y FLOAT NOT NULL,
+  return_5y FLOAT NOT NULL,
+  expense_ratio FLOAT,             -- 0.5% = 0.005
+  platform VARCHAR(50),            -- 'Groww', 'Zerodha', 'Angel One'
+  aum FLOAT,                       -- Assets Under Management (₹)
+  benchmark VARCHAR(100),
+  description TEXT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+</div>
+
+<p><strong>Sample Data:</strong></p>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Risk</th>
+        <th>5Y Return</th>
+        <th>Ratio</th>
+        <th>Platform</th>
+    </tr>
+    <tr>
+        <td>Parag Parikh Equity</td>
+        <td>Equity</td>
+        <td>High</td>
+        <td>18%</td>
+        <td>0.35%</td>
+        <td>Groww</td>
+    </tr>
+    <tr>
+        <td>Quant Small Cap</td>
+        <td>Equity</td>
+        <td>High</td>
+        <td>22%</td>
+        <td>0.40%</td>
+        <td>Zerodha</td>
+    </tr>
+    <tr>
+        <td>HDFC Conservative Hybrid</td>
+        <td>Hybrid</td>
+        <td>Low</td>
+        <td>9%</td>
+        <td>0.45%</td>
+        <td>Angel One</td>
+    </tr>
+</table>
+
+<h3>Table: users</h3>
+<div class="code-block">
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  hashed_password VARCHAR(255),
+  full_name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+
+Note: This table is prepared for future authentication
+Currently, the app is open (no login required)
+</div>
+
+<h3>Table: simulations</h3>
+<div class="code-block">
+CREATE TABLE simulations (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER FOREIGN KEY,      -- Links to users table
+  monthly_amount FLOAT NOT NULL,
+  annual_return FLOAT NOT NULL,
+  years INTEGER NOT NULL,
+  events JSON,                       -- Stored as JSON string
+  results JSON,                      -- Stored as JSON string
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+
+Example events JSON:
+[
+  {"type": "PAUSE_RANGE", "start_month": 50, "end_month": 60},
+  {"type": "STEP_UP", "yearly_growth": 0.1},
+  {"type": "REDUCE", "month": 120, "factor": 0.5}
+]
+
+Example results JSON:
+{
+  "ideal_value": 4824567,
+  "actual_value": 3918420,
+  "compounding_loss": 906147,
+  "ccr": 0.875,
+  "discipline_score": 72.5,
+  "total_expected": 2400000,
+  "total_actual": 2100000
+}
+</div>
+
+<h3>Why SQLite?</h3>
+<table>
+    <tr>
+        <th>Aspect</th>
+        <th>SQLite</th>
+        <th>PostgreSQL</th>
+        <th>MySQL</th>
+    </tr>
+    <tr>
+        <td>Setup Complexity</td>
+        <td>Zero (file-based)</td>
+        <td>High (server required)</td>
+        <td>Medium (server required)</td>
+    </tr>
+    <tr>
+        <td>Scalability</td>
+        <td>Small-medium</td>
+        <td>Enterprise</td>
+        <td>Medium-large</td>
+    </tr>
+    <tr>
+        <td>Deployment</td>
+        <td>Single file (.db)</td>
+        <td>Separate server</td>
+        <td>Separate server</td>
+    </tr>
+    <tr>
+        <td>Perfect For</td>
+        <td>Portfolios, learning, demos</td>
+        <td>Production apps</td>
+        <td>Web applications</td>
+    </tr>
+    <tr>
+        <td>Our Use Case</td>
+        <td>✓ CHOSEN</td>
+        <td>Overkill</td>
+        <td>Overkill</td>
+    </tr>
+</table>
+
+<h3>Sample Database Operations (Using SQLAlchemy)</h3>
+
+<p><strong>Creating a Fund (INSERT):</strong></p>
+<div class="code-block">
+from models import Fund
+from database import SessionLocal
+
+db = SessionLocal()
+new_fund = Fund(
+    name="Axis Bluechip Fund",
+    category="Equity",
+    risk_level="Medium",
+    return_5y=15.5,
+    expense_ratio=0.5,
+    platform="Groww"
+)
+db.add(new_fund)
+db.commit()
+db.refresh(new_fund)
+</div>
+
+<p><strong>Searching Funds (SELECT with WHERE):</strong></p>
+<div class="code-block">
+# Find all high-risk equity funds
+funds = db.query(Fund).filter(
+    Fund.risk_level == "High",
+    Fund.category == "Equity"
+).all()
+
+# Find funds by platform
+groww_funds = db.query(Fund).filter(
+    Fund.platform == "Groww"
+).order_by(Fund.return_5y.desc()).limit(10).all()
+</div>
+
+<!-- SECTION 7: API ENDPOINTS -->
+<div class="section-break"></div>
+<h2>7. API Endpoints & Data Flow</h2>
+
+<h3>What is an API Endpoint?</h3>
+
+<div class="definition">
+<strong>API Endpoint:</strong> A specific URL on the server that accepts requests (from frontend) and returns data (to frontend). Think of it as a mailbox: frontend sends a letter with specific request, server reads it and sends back appropriate response.
+
+<strong>Anatomy:</strong> METHOD /path
+- METHOD: GET (read), POST (create/calculate), PUT (update), DELETE (remove)
+- /path: Where to send request (e.g., /simulate, /search-funds)
+</div>
+
+<h3>Complete API Endpoints</h3>
+
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Purpose</th>
+        <th>Frontend Uses</th>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/simulate</td>
+        <td>Run SIP simulation with backend calculation</td>
+        <td>Dashboard (backup)</td>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/monte-carlo</td>
+        <td>Run 1000+ simulation iterations</td>
+        <td>Monte Carlo page</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/search-funds?q=name&platform=Groww&risk=High&sort_by=return</td>
+        <td>Search funds with filters</td>
+        <td>Fund Explorer</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/funds</td>
+        <td>List all funds with pagination</td>
+        <td>Fund Explorer</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/funds/{id}</td>
+        <td>Get single fund details</td>
+        <td>Fund Explorer detail page</td>
+    </tr>
+</table>
+
+<h3>Request/Response Examples</h3>
+
+<h4>Endpoint 1: POST /simulate</h4>
+
+<p><strong>Request (Frontend sends):</strong></p>
+<div class="code-block">
+POST http://localhost:8000/simulate
+Content-Type: application/json
+
+{
+  "monthly_amount": 10000,
+  "annual_return": 12,
+  "years": 20,
+  "events": [
+    {
+      "type": "PAUSE_RANGE",
+      "start_month": 50,
+      "end_month": 60
+    }
+  ]
+}
+</div>
+
+<p><strong>Response (Server sends back):</strong></p>
+<div class="code-block">
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "ideal_value": 4824567.25,
+  "actual_value": 3918420.75,
+  "compounding_loss": 906146.50,
+  "ccr": 0.875,
+  "discipline_score": 72.5,
+  "total_expected_contribution": 2400000,
+  "total_actual_contribution": 2100000,
+  "chart_data": [
+    {"year": 1, "ideal": 127500, "actual": 125000, "difference": 2500},
+    ...
+  ]
+}
+</div>
+
+<h4>Endpoint 2: GET /search-funds</h4>
+
+<p><strong>Request:</strong></p>
+<div class="code-block">
+GET http://localhost:8000/search-funds?platform=Groww&risk=High&sort_by=return
+</div>
+
+<p><strong>Response:</strong></p>
+<div class="code-block">
+HTTP/1.1 200 OK
+
+[
+  {
+    "id": 1,
+    "name": "Parag Parikh Equity",
+    "category": "Equity",
+    "risk_level": "High",
+    "return_5y": 18.5,
+    "expense_ratio": 0.35,
+    "platform": "Groww"
+  },
+  {
+    "id": 3,
+    "name": "ICICI Focused Bluechip",
+    "category": "Equity",
+    "risk_level": "High",
+    "return_5y": 17.2,
+    "expense_ratio": 0.55,
+    "platform": "Groww"
+  }
+]
+</div>
+
+<h3>Data Flow: Complete Request-Response Cycle</h3>
+
+<div class="architecture-diagram">
+USER ACTION: User clicks "Run Simulation"
+
+STEP 1: Frontend Validates
+├─ Check monthly_amount > 0
+├─ Check annual_return in 0-30%
+├─ Check years in 1-50
+└─ If invalid: Show error, stop
+
+STEP 2: Frontend Prepares Request
+├─ Collect input values
+├─ Build request object
+└─ Add any friction events
+
+STEP 3: Frontend Sends HTTP Request
+└─ POST http://localhost:8000/simulate
+   with JSON body containing params
+
+STEP 4: Backend Receives Request
+├─ Parse request JSON
+├─ Validate types (Pydantic)
+└─ Extract fields
+
+STEP 5: Backend Calculates
+├─ Create SIPSimulator instance
+├─ Run 240 month loops
+├─ Apply friction events
+├─ Calculate metrics
+└─ Create results object
+
+STEP 6: Backend Returns Response
+└─ Convert results to JSON
+   Send HTTP 200 with data
+
+STEP 7: Frontend Receives Response
+├─ Parse response JSON
+├─ Store in state
+└─ Update UI
+
+STEP 8: UI Renders Results
+├─ Chart renders with data
+├─ Stat cards display metrics
+├─ CCR bar shows compliance
+└─ User sees visualization
+
+STEP 9: User Understands Impact
+└─ Sees ₹ loss due to friction
+    Learns importance of discipline
+</div>
+
+<!-- SECTION 8: HOW EVERYTHING WORKS TOGETHER -->
+<div class="section-break"></div>
