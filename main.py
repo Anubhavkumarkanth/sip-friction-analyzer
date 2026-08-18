@@ -29,6 +29,10 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=engine)
 
+@app.get("/")
+def read_root():
+    return {"message": "Sip Friction Analyzer API is running", "status": "online", "docs": "/docs"}
+
 # ----------------------------------
 # Request Models
 # ----------------------------------

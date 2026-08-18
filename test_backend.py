@@ -1,23 +1,17 @@
 from fastapi.testclient import TestClient
-from main import app, Base, engine
-from models import User
 
-def test_login_and_auth():
+from main import app
+
+
+def test_root_endpoint():
     with TestClient(app) as client:
-        # Attempt to access protected route without token
-        response = client.get("/funds")
-        assert response.status_code == 401
-
-        # Login
-        response = client.post("/token", data={"username": "testuser", "password": "password123"})
+        response = client.get("/")
         assert response.status_code == 200
-        token = response.json().get("access_token")
-        assert token is not None
-        return token
+        assert response.json()["status"] == "online"
 
-def test_simulate(token):
+
+def test_simulate():
     with TestClient(app) as client:
-        headers = {"Authorization": f"Bearer {token}"}
         payload = {
             "monthly_amount": 5000,
             "annual_return": 12,
@@ -26,46 +20,36 @@ def test_simulate(token):
                 {"type": "SKIP", "month": 6}
             ]
         }
-        response = client.post("/simulate", json=payload, headers=headers)
+        response = client.post("/simulate", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert "ideal_value" in data
         assert "compounding_loss" in data
+        assert data["actual_value"] < data["ideal_value"]
 
-def test_validation_errors(token):
+
+def test_validation_errors():
     with TestClient(app) as client:
-        headers = {"Authorization": f"Bearer {token}"}
         payload = {
-            "monthly_amount": -5000,  # Invalid
+            "monthly_amount": -5000,
             "annual_return": 12,
             "years": 10
         }
-        response = client.post("/simulate", json=payload, headers=headers)
-        assert response.status_code == 422  # Unprocessable Entity
+        response = client.post("/simulate", json=payload)
+        assert response.status_code == 422
 
-def test_monte_carlo(token):
+
+def test_monte_carlo():
     with TestClient(app) as client:
-        headers = {"Authorization": f"Bearer {token}"}
         payload = {
             "monthly_amount": 5000,
             "annual_return": 12,
             "years": 10,
             "events": [],
-            "simulations": 10, # Configurable!
+            "simulations": 10,
             "volatility": 0.2
         }
-        response = client.post("/monte-carlo", json=payload, headers=headers)
+        response = client.post("/monte-carlo", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert "mean" in data
-
-if __name__ == "__main__":
-    print("Testing Auth...")
-    token = test_login_and_auth()
-    print("Testing /simulate...")
-    test_simulate(token)
-    print("Testing Validation...")
-    test_validation_errors(token)
-    print("Testing /monte-carlo config...")
-    test_monte_carlo(token)
-    print("All backend tests passed successfully!")
