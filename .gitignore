@@ -60,6 +60,33 @@ htmlcov/
 logs/
 *.pot
 
+# Local tools, generated artifacts, and documents
+.localdoc/
+.localpdf/
+.localppt/
+output/
+rendered_pages/
+tmp/
+tmp_*/
+seminar_work/rendered_final/
+*.pdf
+*.pptx
+~$*
+DDIC_22ECE652_Model_Answers.md
+diagrams/
+seminar_work/
+report.html
+build_expanded_pdf.py
+build_model_answers_pdf.py
+edit_base_pdf_exact.py
+generate_report_and_ppt.py
+generate_sample_style_pdf.py
+merge_complete_report.py
+
+# Frontend build artifacts
+frontend/dist/
+frontend/coverage/
+
 # Environment
 .env
 .env.local
