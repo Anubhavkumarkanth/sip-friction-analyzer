@@ -1,0 +1,2 @@
+# Keep the generated project guide out of GitHub's language statistics.
+COMPLETE_PROJECT_GUIDE.html linguist-documentation
