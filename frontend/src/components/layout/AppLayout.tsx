@@ -1,18 +1,23 @@
-import React from 'react';
+import { FC } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { TrendingUp, Activity, Search, BarChart2 } from 'lucide-react';
 import './AppLayout.css';
 
-const AppLayout = () => {
+const AppLayout: FC = () => {
   const location = useLocation();
   
-  const getPageTitle = () => {
+  const getPageTitle = (): string => {
     switch (location.pathname) {
-      case '/': return 'Dashboard Overview';
-      case '/monte-carlo': return 'Monte Carlo Simulator';
-      case '/funds': return 'Fund Explorer';
-      case '/compare': return 'Compare Funds';
-      default: return 'Overview';
+      case '/':
+        return 'SIP Friction & Discipline Dashboard';
+      case '/monte-carlo':
+        return 'Monte Carlo Stochastic Simulator';
+      case '/funds':
+        return 'Mutual Fund Explorer';
+      case '/compare':
+        return 'Comparative Fund Analysis';
+      default:
+        return 'SIP Friction Analyzer';
     }
   };
 
@@ -25,15 +30,25 @@ const AppLayout = () => {
         </div>
         
         <nav className="sidebar-nav">
-          <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
+          >
             <BarChart2 size={20} />
             <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/monte-carlo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink
+            to="/monte-carlo"
+            className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
+          >
             <Activity size={20} />
             <span>Monte Carlo</span>
           </NavLink>
-          <NavLink to="/funds" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink
+            to="/funds"
+            className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
+          >
             <Search size={20} />
             <span>Funds Explorer</span>
           </NavLink>
@@ -43,8 +58,8 @@ const AppLayout = () => {
           <div className="user-profile">
             <div className="avatar">A</div>
             <div>
-              <p className="user-name">Pro Investor</p>
-              <p className="user-status text-gradient">Ready</p>
+              <p className="user-name">Portfolio Mode</p>
+              <p className="user-status text-gradient">Simulation Active</p>
             </div>
           </div>
         </div>
@@ -56,7 +71,7 @@ const AppLayout = () => {
             <h3>{getPageTitle()}</h3>
           </div>
           <div className="header-actions">
-            <button className="icon-btn hover-scale"><Search size={20} /></button>
+            <span className="badge-live">Educational Simulator</span>
           </div>
         </header>
         

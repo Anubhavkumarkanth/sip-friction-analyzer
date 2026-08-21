@@ -1,24 +1,23 @@
+import React from 'react';
+
 // ==================== Fund Types ====================
 export interface Fund {
   id: number;
   name: string;
   category: string;
-  risk_level: 'Low' | 'Medium' | 'High';
-  return_1y?: number;
+  platform: string;
+  risk_level: string;
   return_3y: number;
   return_5y: number;
   expense_ratio: number;
-  platform: 'Groww' | 'Zerodha' | 'Angel One';
-  aum?: number;
-  benchmark?: string;
-  description?: string;
+  invest_url: string;
 }
 
 // ==================== SIP Simulation Types ====================
 export type EventType = 'PAUSE_RANGE' | 'STEP_UP' | 'REDUCE' | 'SKIP' | 'INCREASE';
 
 export interface FrictionEvent {
-  id: number;
+  id?: number;
   type: EventType;
   month?: number;
   factor?: number;
@@ -37,7 +36,6 @@ export interface ChartDataPoint {
   year: number;
   ideal: number;
   actual: number;
-  difference: number;
 }
 
 export interface SimulationResult {
@@ -51,24 +49,25 @@ export interface SimulationResult {
   chart_data: ChartDataPoint[];
 }
 
-// ==================== API Response Types ====================
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-export interface SearchFundsResponse {
-  data: Fund[];
-  total: number;
-}
-
 export interface SimulationRequest {
   monthly_amount: number;
   annual_return: number;
   years: number;
   events?: FrictionEvent[];
+}
+
+export interface MonteCarloRequest extends SimulationRequest {
+  simulations?: number;
+  volatility?: number;
+}
+
+export interface MonteCarloResult {
+  mean: number;
+  p10: number;
+  p50: number;
+  p90: number;
+  best_case: number;
+  worst_case: number;
 }
 
 // ==================== Component Props Types ====================
@@ -87,8 +86,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   className?: string;
 }
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;

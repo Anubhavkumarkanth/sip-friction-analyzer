@@ -1,13 +1,16 @@
 /**
- * Smart Indian Rupee formatter
- * ₹1,23,456 → ₹1.23L
- * ₹1,23,45,678 → ₹1.23Cr
+ * Financial formatter for Indian Rupee (INR) denomination standards:
+ * - Thousands (K): ₹1.2K
+ * - Lakhs (L): ₹1.23L
+ * - Crores (Cr): ₹1.23Cr
  */
-export function formatINR(value: number): string {
-  if (value == null || isNaN(value)) return '₹0';
 
-  const abs = Math.abs(value);
-  const sign = value < 0 ? '-' : '';
+export function formatINR(value: number | null | undefined): string {
+  if (value == null || isNaN(Number(value))) return '₹0';
+
+  const num = Number(value);
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
 
   if (abs >= 1_00_00_000) {
     return `${sign}₹${(abs / 1_00_00_000).toFixed(2)}Cr`;
@@ -18,18 +21,18 @@ export function formatINR(value: number): string {
   if (abs >= 1_000) {
     return `${sign}₹${(abs / 1_000).toFixed(1)}K`;
   }
-  return `${sign}₹${Math.round(abs)}`;
+  return `${sign}₹${Math.round(abs).toLocaleString('en-IN')}`;
 }
 
 /**
- * Compact axis label (no ₹ prefix, shorter)
+ * Axis tick formatter providing short, readable labels for charts
  */
 export function formatINRAxis(value: number | string | null | undefined): string {
   if (value == null || isNaN(Number(value))) return '₹0';
 
-  const numValue = Number(value);
-  const abs = Math.abs(numValue);
-  const sign = numValue < 0 ? '-' : '';
+  const num = Number(value);
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
 
   if (abs >= 1_00_00_000) {
     return `${sign}₹${(abs / 1_00_00_000).toFixed(1)}Cr`;
@@ -38,7 +41,7 @@ export function formatINRAxis(value: number | string | null | undefined): string
     return `${sign}₹${(abs / 1_00_000).toFixed(1)}L`;
   }
   if (abs >= 1_000) {
-    return `${sign}${(abs / 1_000).toFixed(1)}K`;
+    return `${sign}₹${(abs / 1_000).toFixed(1)}K`;
   }
   return `${sign}₹${Math.round(abs)}`;
 }

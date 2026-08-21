@@ -3,38 +3,36 @@ from datetime import datetime
 
 from database import Base
 
-# -----------------------------
-# User Table
-# -----------------------------
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Simulation(Base):
     __tablename__ = "simulations"
 
     id = Column(Integer, primary_key=True, index=True)
-    ideal_value = Column(Float)
-    actual_value = Column(Float)
-    compounding_loss = Column(Float)
-    discipline_score = Column(Float)
+    ideal_value = Column(Float, nullable=False)
+    actual_value = Column(Float, nullable=False)
+    compounding_loss = Column(Float, nullable=False)
+    discipline_score = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# -----------------------------
-# Funds Table
-# -----------------------------
 class Fund(Base):
     __tablename__ = "funds"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    category = Column(String, nullable=False)
-    platform = Column(String, nullable=False)
-    risk_level = Column(String, nullable=False)
+    name = Column(String(255), index=True, nullable=False)
+    category = Column(String(100), index=True, nullable=False)
+    platform = Column(String(100), index=True, nullable=False)
+    risk_level = Column(String(50), index=True, nullable=False)
     return_3y = Column(Float, nullable=False)
     return_5y = Column(Float, nullable=False)
     expense_ratio = Column(Float, nullable=False)
-    invest_url = Column(String, nullable=False)
+    invest_url = Column(String(500), nullable=False)

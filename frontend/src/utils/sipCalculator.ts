@@ -1,14 +1,13 @@
 import { ChartDataPoint, SimulationResult } from '../types';
 
 /**
- * Calculate SIP simulation results
- * Used for testing and validation
+ * Deterministic SIP calculation utility for client-side previews and baseline testing.
  */
 export function calculateSIPSimulation(
   monthlyAmount: number,
   annualReturn: number,
   years: number
-): {result: SimulationResult; chartData: ChartDataPoint[]} {
+): { result: SimulationResult; chartData: ChartDataPoint[] } {
   const monthlyReturn = annualReturn / 100 / 12;
   const totalMonths = Math.floor(years * 12);
 
@@ -19,30 +18,26 @@ export function calculateSIPSimulation(
   const chartData: ChartDataPoint[] = [];
 
   for (let month = 1; month <= totalMonths; month++) {
-    // Ideal calculation (no friction)
+    // Ideal calculation (zero friction baseline)
     idealValue = (idealValue + monthlyAmount) * (1 + monthlyReturn);
 
-    // Actual calculation (same as ideal without events)
     const contribution = monthlyAmount;
     totalExpected += monthlyAmount;
     totalActual += contribution;
     actualValue = (actualValue + contribution) * (1 + monthlyReturn);
 
-    // Record annual data
     if (month % 12 === 0) {
       chartData.push({
         year: month / 12,
         ideal: Math.round(idealValue * 100) / 100,
         actual: Math.round(actualValue * 100) / 100,
-        difference: 0, // No difference when no friction events
       });
     }
   }
 
-  // Calculate metrics
-  const cld = 0; // No compounding loss without friction
+  const cld = 0;
   const ccr = totalExpected > 0 ? totalActual / totalExpected : 1;
-  const disciplineScore = 100; // Perfect discipline without friction
+  const disciplineScore = 100;
 
   const result: SimulationResult = {
     ideal_value: Math.round(idealValue * 100) / 100,
