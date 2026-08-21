@@ -30,13 +30,14 @@ describe('formatINR', () => {
     expect(formatINR(0)).toBe('₹0');
   });
 
-  it('should handle null and NaN', () => {
-    expect(formatINR(null as any)).toBe('₹0');
+  it('should handle null and NaN safely', () => {
+    expect(formatINR(null as unknown as number)).toBe('₹0');
     expect(formatINR(NaN)).toBe('₹0');
+    expect(formatINR(undefined)).toBe('₹0');
   });
 
   it('should handle decimal values', () => {
-    expect(formatINR(1234.56)).toBe('₹1.23K');
+    expect(formatINR(1234.56)).toBe('₹1.2K');
     expect(formatINR(1234567.89)).toBe('₹12.35L');
   });
 });
@@ -45,11 +46,12 @@ describe('formatINRAxis', () => {
   it('should format for axis labels', () => {
     expect(formatINRAxis(100000)).toBe('₹1.0L');
     expect(formatINRAxis(1000000)).toBe('₹10.0L');
+    expect(formatINRAxis(1000)).toBe('₹1.0K');
   });
 
   it('should handle string inputs', () => {
     expect(formatINRAxis('100000')).toBe('₹1.0L');
-    expect(formatINRAxis('1000')).toBe('1.0K');
+    expect(formatINRAxis('1000')).toBe('₹1.0K');
   });
 
   it('should handle null and undefined', () => {

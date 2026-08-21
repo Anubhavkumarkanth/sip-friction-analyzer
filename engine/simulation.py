@@ -1,8 +1,14 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple, Any
+import math
 import random
 
 
 class SIPSimulator:
+    """Core simulation engine for Systematic Investment Plans (SIP)
+
+    Supports deterministic growth modeling, friction event scheduling
+    (pauses, skips, reductions, step-ups), and stochastic Monte Carlo simulations.
+    """
 
     def __init__(
         self,
@@ -10,91 +16,118 @@ class SIPSimulator:
         annual_return: float,
         years: int
     ):
-        self.initial_monthly_amount = monthly_amount
-        self.monthly_return = annual_return / 12
-        self.total_months = years * 12
+        if monthly_amount <= 0:
+            raise ValueError("Monthly amount must be positive.")
+        if years <= 0:
+            raise ValueError("Investment duration in years must be positive.")
 
-    # ----------------------------------
-    # Ideal disciplined investing
-    # ----------------------------------
-    def calculate_ideal(self):
-        value = 0
+        self.initial_monthly_amount = float(monthly_amount)
+        self.annual_return = float(annual_return)
+        self.monthly_return = float(annual_return) / 12.0
+        self.total_months = int(years * 12)
+
+    def calculate_ideal(self) -> Tuple[float, List[Dict[str, Any]]]:
+        """Calculates ideal wealth accumulation without any friction events."""
+        value = 0.0
         monthly_amount = self.initial_monthly_amount
-        history = []
+        history: List[Dict[str, Any]] = []
 
         for month in range(1, self.total_months + 1):
-            value = (value + monthly_amount) * (1 + self.monthly_return)
+            value = (value + monthly_amount) * (1.0 + self.monthly_return)
             if month % 12 == 0:
-                history.append({"year": month // 12, "ideal_value": round(value, 2)})
+                history.append({
+                    "year": month // 12,
+                    "ideal_value": round(value, 2)
+                })
 
         return round(value, 2), history
 
-    # ----------------------------------
-    # Behavioral investing
-    # ----------------------------------
-    def calculate_actual(self, events: List[Dict]):
+    def _build_cashflow_schedule(
+        self, events: List[Dict[str, Any]]
+    ) -> Tuple[List[float], List[float]]:
+        """Pre-computes the expected and actual cashflow schedules for all months.
 
-        value = 0
-        monthly_amount = self.initial_monthly_amount
+        Handles one-off events (SKIP, REDUCE, INCREASE), date ranges (PAUSE_RANGE),
+        and recurring annual increases (STEP_UP).
+        """
+        event_map: Dict[int, List[Dict[str, Any]]] = {}
+        pause_ranges: List[Tuple[int, int]] = []
+        step_up_rate = 0.0
 
-        total_expected = 0
-        total_actual = 0
-
-        event_map = {}
-        pause_ranges = []
-        step_up_rate = 0
-
-        for event in events:
+        for event in events or []:
             event_type = event.get("type")
-
             if event_type == "PAUSE_RANGE":
-                pause_ranges.append(
-                    (event.get("start_month"), event.get("end_month"))
-                )
-
+                start = event.get("start_month")
+                end = event.get("end_month")
+                if start is not None and end is not None:
+                    pause_ranges.append((int(start), int(end)))
             elif event_type == "STEP_UP":
-                step_up_rate = event.get("yearly_growth", 0)
-
+                step_up_rate = float(event.get("yearly_growth") or 0.0)
             else:
                 month = event.get("month")
-                if month:
-                    if month not in event_map:
-                        event_map[month] = []
-                    event_map[month].append(event)
+                if month is not None:
+                    m = int(month)
+                    if m not in event_map:
+                        event_map[m] = []
+                    event_map[m].append(event)
 
-        history = []
+        expected_schedule: List[float] = []
+        actual_schedule: List[float] = []
+
+        current_base_amount = self.initial_monthly_amount
 
         for month in range(1, self.total_months + 1):
+            expected_schedule.append(current_base_amount)
+            contribution = current_base_amount
 
-            contribution = monthly_amount
-            total_expected += monthly_amount
+            # Check pause ranges
+            is_paused = any(start <= month <= end for start, end in pause_ranges)
+            if is_paused:
+                contribution = 0.0
 
-            for start, end in pause_ranges:
-                if start and end and start <= month <= end:
-                    contribution = 0
-
+            # Process discrete month events
             if month in event_map:
                 for event in event_map[month]:
+                    e_type = event.get("type")
+                    if e_type == "SKIP":
+                        contribution = 0.0
+                    elif e_type == "REDUCE":
+                        factor = float(event.get("factor", 1.0))
+                        contribution = current_base_amount * factor
+                    elif e_type == "INCREASE":
+                        factor = float(event.get("factor", 1.0))
+                        current_base_amount *= factor
+                        contribution = current_base_amount
 
-                    if event["type"] == "SKIP":
-                        contribution = 0
+            actual_schedule.append(max(0.0, contribution))
 
-                    elif event["type"] == "REDUCE":
-                        contribution = monthly_amount * event.get("factor", 1)
+            # Annual step up applied at the end of each full year
+            if step_up_rate > 0 and month % 12 == 0:
+                current_base_amount *= (1.0 + step_up_rate)
 
-                    elif event["type"] == "INCREASE":
-                        monthly_amount *= event.get("factor", 1)
-                        contribution = monthly_amount
+        return expected_schedule, actual_schedule
 
-            total_actual += contribution
+    def calculate_actual(
+        self, events: List[Dict[str, Any]]
+    ) -> Tuple[float, float, float, List[Dict[str, Any]]]:
+        """Calculates actual portfolio value considering investor friction events."""
+        expected_schedule, actual_schedule = self._build_cashflow_schedule(events)
 
-            if step_up_rate and month % 12 == 0:
-                monthly_amount *= (1 + step_up_rate)
+        value = 0.0
+        history: List[Dict[str, Any]] = []
 
-            value = (value + contribution) * (1 + self.monthly_return)
-            
+        for month in range(1, self.total_months + 1):
+            contribution = actual_schedule[month - 1]
+            value = (value + contribution) * (1.0 + self.monthly_return)
+
             if month % 12 == 0:
-                history.append({"year": month // 12, "actual_value": round(value, 2)})
+                history.append({
+                    "year": month // 12,
+                    "actual_value": round(value, 2)
+                })
+
+        total_expected = sum(expected_schedule)
+        total_actual = sum(actual_schedule)
 
         return (
             round(value, 2),
@@ -103,92 +136,53 @@ class SIPSimulator:
             history
         )
 
-    # ----------------------------------
-    # Monte Carlo Simulation (Clean Version)
-    # ----------------------------------
     def monte_carlo(
         self,
-        events: List[Dict],
+        events: List[Dict[str, Any]],
         simulations: int = 1000,
         volatility: float = 0.15
-    ):
+    ) -> Dict[str, float]:
+        """Performs Monte Carlo simulation modeling market return uncertainty.
 
-        results = []
+        Annual volatility is correctly converted to monthly volatility using
+        the square-root-of-time rule: sigma_monthly = sigma_annual / sqrt(12).
+        """
+        if simulations <= 0:
+            raise ValueError("Simulations count must be positive.")
+
+        _, actual_schedule = self._build_cashflow_schedule(events)
+
+        monthly_mean = self.monthly_return
+        monthly_vol = float(volatility) / math.sqrt(12.0)
+
+        results: List[float] = []
 
         for _ in range(simulations):
-
-            value = 0
-            monthly_amount = self.initial_monthly_amount
-
-            monthly_mean = self.monthly_return
-            monthly_vol = volatility / 12
-
-            event_map = {}
-            pause_ranges = []
-            step_up_rate = 0
-
-            for event in events:
-                event_type = event.get("type")
-
-                if event_type == "PAUSE_RANGE":
-                    pause_ranges.append(
-                        (event.get("start_month"), event.get("end_month"))
-                    )
-
-                elif event_type == "STEP_UP":
-                    step_up_rate = event.get("yearly_growth", 0)
-
-                else:
-                    month = event.get("month")
-                    if month:
-                        if month not in event_map:
-                            event_map[month] = []
-                        event_map[month].append(event)
-
+            val = 0.0
             for month in range(1, self.total_months + 1):
-
-                contribution = monthly_amount
-
-                for start, end in pause_ranges:
-                    if start and end and start <= month <= end:
-                        contribution = 0
-
-                if month in event_map:
-                    for event in event_map[month]:
-
-                        if event["type"] == "SKIP":
-                            contribution = 0
-
-                        elif event["type"] == "REDUCE":
-                            contribution = monthly_amount * event.get("factor", 1)
-
-                        elif event["type"] == "INCREASE":
-                            monthly_amount *= event.get("factor", 1)
-                            contribution = monthly_amount
-
-                random_return = random.gauss(monthly_mean, monthly_vol)
-
-                value = (value + contribution) * (1 + random_return)
-
-                if step_up_rate and month % 12 == 0:
-                    monthly_amount *= (1 + step_up_rate)
-
-            results.append(value)
+                contribution = actual_schedule[month - 1]
+                monthly_rand_return = random.gauss(monthly_mean, monthly_vol)
+                # Ensure portfolio value does not become negative on extreme negative shocks
+                val = max(0.0, (val + contribution) * (1.0 + monthly_rand_return))
+            results.append(val)
 
         results.sort()
 
-        def percentile(p):
-            index = int(p * len(results))
-            return round(results[index], 2)
-
-        min_val = min(results)
-        max_val = max(results)
+        def compute_percentile(p: float) -> float:
+            if not results:
+                return 0.0
+            idx = p * (len(results) - 1)
+            lower = int(idx)
+            upper = min(lower + 1, len(results) - 1)
+            weight = idx - lower
+            interpolated = (1.0 - weight) * results[lower] + weight * results[upper]
+            return round(interpolated, 2)
 
         return {
             "mean": round(sum(results) / len(results), 2),
-            "p10": percentile(0.10),
-            "p50": percentile(0.50),
-            "p90": percentile(0.90),
-            "best_case": round(max_val, 2),
-            "worst_case": round(min_val, 2)
+            "p10": compute_percentile(0.10),
+            "p50": compute_percentile(0.50),
+            "p90": compute_percentile(0.90),
+            "best_case": round(max(results), 2),
+            "worst_case": round(min(results), 2)
         }

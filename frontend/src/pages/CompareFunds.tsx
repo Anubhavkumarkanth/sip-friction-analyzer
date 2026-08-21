@@ -1,14 +1,20 @@
-import React from 'react';
+import { FC } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { RefreshCcw, TrendingUp, ArrowLeft } from 'lucide-react';
 import GlassCard from '../components/ui/GlassCard';
 import Button from '../components/ui/Button';
+import { Fund } from '../types';
 import './CompareFunds.css';
 
-const CompareFunds = () => {
+interface LocationState {
+  funds?: Fund[];
+}
+
+const CompareFunds: FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const funds = location.state?.funds;
+  const state = location.state as LocationState | undefined;
+  const funds = state?.funds;
 
   if (!funds || funds.length < 2) {
     return <Navigate to="/funds" replace />;
@@ -16,7 +22,7 @@ const CompareFunds = () => {
 
   const [fundOne, fundTwo] = funds;
 
-  const handleSimulate = (fund) => {
+  const handleSimulate = (fund: Fund) => {
     navigate('/', { state: { prefilledFund: fund } });
   };
 
@@ -29,27 +35,35 @@ const CompareFunds = () => {
         <h2 style={{ color: 'var(--text-primary)', margin: 0 }}>Fund Comparison</h2>
       </div>
       <p className="text-muted" style={{ marginTop: '0.5rem', marginBottom: '2rem', marginLeft: '2.5rem' }}>
-        Side-by-side analysis of your selected mutual funds.
+        Side-by-side analysis of historical CAGR performance and expense structures.
       </p>
 
       <div className="compare-grid">
         {/* Fund 1 */}
         <GlassCard className="compare-card">
           <h3 className="fund-name text-center" style={{ marginBottom: '0.5rem' }}>{fundOne.name}</h3>
-          <p className="text-muted text-center" style={{ marginBottom: '1.5rem' }}>{fundOne.category} &bull; {fundOne.risk_level}</p>
-          
+          <p className="text-muted text-center" style={{ marginBottom: '1.5rem' }}>
+            {fundOne.category} &bull; {fundOne.risk_level}
+          </p>
+
           <div className="compare-metrics">
             <div className="compare-row">
               <span className="text-muted">3-Year Return</span>
-              <span className={fundOne.return_3y > fundTwo.return_3y ? "text-accent fw-bold" : ""}>{fundOne.return_3y}%</span>
+              <span className={fundOne.return_3y > fundTwo.return_3y ? 'text-accent fw-bold' : ''}>
+                {fundOne.return_3y}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">5-Year Return</span>
-              <span className={fundOne.return_5y > fundTwo.return_5y ? "text-accent fw-bold" : ""}>{fundOne.return_5y}%</span>
+              <span className={fundOne.return_5y > fundTwo.return_5y ? 'text-accent fw-bold' : ''}>
+                {fundOne.return_5y}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">Expense Ratio</span>
-              <span className={fundOne.expense_ratio < fundTwo.expense_ratio ? "text-success fw-bold" : ""}>{fundOne.expense_ratio}%</span>
+              <span className={fundOne.expense_ratio < fundTwo.expense_ratio ? 'text-success fw-bold' : ''}>
+                {fundOne.expense_ratio}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">Platform</span>
@@ -71,20 +85,28 @@ const CompareFunds = () => {
         {/* Fund 2 */}
         <GlassCard className="compare-card">
           <h3 className="fund-name text-center" style={{ marginBottom: '0.5rem' }}>{fundTwo.name}</h3>
-          <p className="text-muted text-center" style={{ marginBottom: '1.5rem' }}>{fundTwo.category} &bull; {fundTwo.risk_level}</p>
-          
+          <p className="text-muted text-center" style={{ marginBottom: '1.5rem' }}>
+            {fundTwo.category} &bull; {fundTwo.risk_level}
+          </p>
+
           <div className="compare-metrics">
             <div className="compare-row">
               <span className="text-muted">3-Year Return</span>
-              <span className={fundTwo.return_3y > fundOne.return_3y ? "text-accent fw-bold" : ""}>{fundTwo.return_3y}%</span>
+              <span className={fundTwo.return_3y > fundOne.return_3y ? 'text-accent fw-bold' : ''}>
+                {fundTwo.return_3y}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">5-Year Return</span>
-              <span className={fundTwo.return_5y > fundOne.return_5y ? "text-accent fw-bold" : ""}>{fundTwo.return_5y}%</span>
+              <span className={fundTwo.return_5y > fundOne.return_5y ? 'text-accent fw-bold' : ''}>
+                {fundTwo.return_5y}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">Expense Ratio</span>
-              <span className={fundTwo.expense_ratio < fundOne.expense_ratio ? "text-success fw-bold" : ""}>{fundTwo.expense_ratio}%</span>
+              <span className={fundTwo.expense_ratio < fundOne.expense_ratio ? 'text-success fw-bold' : ''}>
+                {fundTwo.expense_ratio}%
+              </span>
             </div>
             <div className="compare-row">
               <span className="text-muted">Platform</span>

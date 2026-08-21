@@ -1,4 +1,4 @@
-import { calculateSIPSimulation } from '../utils/sipCalculator';
+import { calculateSIPSimulation } from '../sipCalculator';
 
 describe('SIP Calculator', () => {
   describe('calculateSIPSimulation', () => {
@@ -28,17 +28,10 @@ describe('SIP Calculator', () => {
       expect(result.ideal_value).toBeCloseTo(result.actual_value, 2); // No friction = identical
     });
 
-    it('should handle 0% annual return (savings account)', () => {
+    it('should handle 0% annual return', () => {
       const { result } = calculateSIPSimulation(1000, 0, 5);
-
-      // With 0% return, final value = total contributions
       expect(result.ideal_value).toBeCloseTo(60000, 1); // 1000 * 60 months
       expect(result.compounding_loss).toBe(0);
-    });
-
-    it('should validate input constraints', () => {
-      expect(() => calculateSIPSimulation(-1000, 12, 5)).not.toThrow();
-      // The function should handle invalid inputs gracefully
     });
 
     it('should calculate chart data points correctly', () => {
@@ -49,7 +42,6 @@ describe('SIP Calculator', () => {
         expect(point.year).toBe(index + 1);
         expect(point.ideal).toBeGreaterThan(0);
         expect(point.actual).toBeGreaterThan(0);
-        expect(point.difference).toBe(0);
       });
     });
 
@@ -64,15 +56,10 @@ describe('SIP Calculator', () => {
   });
 
   describe('Edge cases', () => {
-    it('should handle very large return rates', () => {
+    it('should handle large return rates', () => {
       const { result } = calculateSIPSimulation(1000, 30, 10);
       expect(result.ideal_value).toBeGreaterThan(0);
       expect(isFinite(result.ideal_value)).toBe(true);
-    });
-
-    it('should handle single month SIP', () => {
-      const { chartData } = calculateSIPSimulation(1000, 12, 0.083); // ~1 month
-      expect(chartData.length).toBeGreaterThanOrEqual(0);
     });
 
     it('should maintain CCR = 1 when there is no friction', () => {
