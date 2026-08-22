@@ -25,21 +25,21 @@ Most retail investors fail to achieve projected compound returns not due to mark
 ## 🏛️ System Architecture
 
 ```mermaid
-graph TD
+flowchart TD
     subgraph Client ["Frontend (React 19 + TypeScript + Vite)"]
-        UI[Dashboard / Monte Carlo / Explorer]
-        Axios[Typed API Client]
-        Recharts[Recharts Interactive Visualizer]
+        UI["Dashboard / Monte Carlo / Explorer Views"]
+        Axios["Typed API Client (Axios)"]
+        Recharts["Interactive Recharts Visualizer"]
         UI --> Axios
         Axios --> Recharts
     end
 
     subgraph Backend ["FastAPI REST API"]
-        Router[FastAPI Routes & Validation]
-        Engine[SIP Simulation Engine]
-        Stochastic[Monte Carlo Engine (GBM)]
-        Friction[Friction Metric Calculator]
-        Auth[OAuth2 / JWT Security]
+        Router["FastAPI Routes & Validation"]
+        Engine["SIP Simulation Engine"]
+        Stochastic["Monte Carlo Engine (GBM)"]
+        Friction["Friction Metric Calculator"]
+        Auth["OAuth2 / JWT Security"]
         Router --> Engine
         Router --> Stochastic
         Router --> Friction
@@ -47,11 +47,11 @@ graph TD
     end
 
     subgraph Storage ["Persistence Layer"]
-        DB[(SQLite / PostgreSQL via SQLAlchemy)]
+        DB[("SQLite / PostgreSQL via SQLAlchemy")]
         Router --> DB
     end
 
-    Axios <-->|JSON / REST| Router
+    Axios <-->|"JSON / REST"| Router
 ```
 
 ---
