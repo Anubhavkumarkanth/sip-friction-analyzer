@@ -1,126 +1,131 @@
-# 📈 SIP Friction Analyzer
+# SIP Friction Analyzer
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-19_TypeScript-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A web application that estimates how **skipped or reduced contributions** affect the long-term outcome of a Systematic Investment Plan (SIP).
+A web app that shows what skipping or reducing SIP contributions actually costs over a couple of
+decades. You set up a monthly plan, add the things that go wrong in real life — a six-month pause, a
+year at half the amount, an annual step-up — and it compares that against the disciplined version.
+
+Built with React and TypeScript on the front, FastAPI and PostgreSQL behind it.
 
 ---
 
-## 💡 The Problem & Motivation
+## What it does
 
-Most retail investors fail to achieve projected compound returns not due to market underperformance, but due to **behavioral friction**:
-- Pausing contributions during market drawdowns
-- Skipping monthly installments
-- Prematurely reducing ticket sizes
-- Failing to institute periodic step-ups
+Most people who fall short of their projected returns don't do so because the market
+underperformed. They pause during a drawdown, skip a month, or quietly halve the amount and never
+put it back. This puts a number on that.
 
-**SIP Friction Analyzer** models discrete cashflow perturbations against ideal compound trajectories, computing exact compounding loss and probabilistic terminal wealth via stochastic Monte Carlo simulation.
+For a given plan it computes:
+
+- **Compounding loss** — the gap between the ideal and actual final corpus
+- **Contribution Compliance Rate** — how much of the intended money actually went in
+- **Discipline Score** (0–100) — a single figure weighting missed contributions and the compounding
+  cost they caused
+- **A Monte Carlo range** — 1,000 randomised return paths, reported as P10 / P50 / P90
 
 ---
 
-## 🏛️ System Architecture
+## Key features
+
+- Add friction events: skip a month, reduce by a factor, pause a date range, or apply an annual step-up
+- Year-by-year chart of ideal vs actual, with the gap shaded
+- Saved history — every run is stored with the events that produced it, so it can be explained later
+- JWT sign-in; each user only sees their own runs
+- A reporting endpoint showing which kinds of friction cost that user the most
+- Fund comparison screens over a small reference catalogue
+
+---
+
+## How it works
 
 ```mermaid
-flowchart TD
-    subgraph Client ["Frontend (React 19 + TypeScript + Vite)"]
-        UI["Dashboard / Monte Carlo / Explorer Views"]
-        Axios["Typed API Client (Axios)"]
-        Recharts["Interactive Recharts Visualizer"]
+flowchart LR
+    subgraph Client ["React 19 + TypeScript"]
+        UI["Dashboard / Monte Carlo / Funds"]
+        Axios["Typed axios client"]
         UI --> Axios
-        Axios --> Recharts
     end
 
-    subgraph Backend ["FastAPI REST API"]
-        Router["FastAPI Routes & Validation"]
-        Engine["SIP Simulation Engine"]
-        Stochastic["Monte Carlo Engine"]
-        Friction["Friction Metric Calculator"]
-        Auth["OAuth2 / JWT Security"]
+    subgraph Backend ["FastAPI"]
+        Router["Routes + Pydantic validation"]
+        Engine["Simulation engine"]
+        Auth["JWT auth"]
         Router --> Engine
-        Router --> Stochastic
-        Router --> Friction
         Router --> Auth
     end
 
-    subgraph Storage ["Persistence Layer"]
-        DB[("SQLite / PostgreSQL via SQLAlchemy")]
-        Router --> DB
-    end
+    DB[("PostgreSQL via SQLAlchemy")]
 
-    Axios <-->|"JSON / REST"| Router
+    Axios <-->|JSON| Router
+    Router --> DB
 ```
 
----
+The simulation runs on the server. It used to be reimplemented in TypeScript in the browser too,
+which meant the compounding loop and the scoring formula existed twice in two languages with
+nothing keeping them in step — and nothing was ever saved. Now there is one implementation, and
+every run is persisted with its events.
 
-## 🧠 Engineering Decisions & Architectural Trade-offs
+### The maths, briefly
 
-1. **Cashflow Pre-Computation ($\mathcal{O}(T)$ vs $\mathcal{O}(N \times T)$)**:
-   - *Problem*: Running 1,000–10,000 Monte Carlo paths with recurring annual step-ups and multiple discrete pause ranges was bottlenecked by evaluating event conditionals inside nested month loops.
-   - *Solution*: Pre-compiled the cashflow schedule into an indexed array once in $\mathcal{O}(T)$ time before executing stochastic paths, so the event conditionals are evaluated once rather than inside the inner month loop.
-   - *Note*: this was done to avoid redundant work, not on the basis of a benchmark. No timing comparison was measured, so no speedup figure is claimed.
+**Contribution Compliance Rate** — actual contributions divided by intended, clamped to [0, 1].
 
-2. **Square-Root Volatility Scaling**:
-   - *Problem*: Naive stochastic simulators divide annualized volatility by 12 ($\sigma / 12$), which severely suppresses monthly return dispersion.
-   - *Solution*: Implemented standard quantitative finance temporal scaling ($\sigma_{\text{month}} = \sigma_{\text{annual}} / \sqrt{12}$) with continuous quantile interpolation ($P10, P50, P90$) and non-negative capital floors.
+**Compounding loss** — ideal final value minus actual, floored at zero.
 
-3. **FastAPI Lifespan Context & Decoupled Configuration**:
-   - Replaced deprecated startup events with modern `@asynccontextmanager` lifespans for database initialization, backed by Pydantic `BaseSettings` for seamless environment switching between SQLite (local development) and PostgreSQL (production).
+**Discipline Score** — `100 − (40 × (1 − CCR) + 60 × loss_ratio)`, clamped to [0, 100]. Missed
+contributions are weighted at 40% and the compounding damage they caused at 60%, because the
+second is what actually hurts over twenty years.
 
-4. **Strict TypeScript & Error Boundaries**:
-   - Unified all frontend contracts into strict TypeScript interfaces, backed by dedicated custom hooks (`useDebounce`) and a top-level `ErrorBoundary` to gracefully handle unexpected visualization runtime shocks.
+**Monte Carlo** — draws a normally distributed return each month and floors portfolio value at
+zero. Annual volatility is scaled to monthly by dividing by √12, not by 12; dividing by 12 would
+badly understate month-to-month dispersion.
 
----
-
-## 📐 Mathematical Formulation
-
-### 1. Contribution Compliance Rate ($CCR$)
-Quantifies the proportion of expected capital successfully deployed over the investment horizon:
-$$CCR = \frac{\sum_{t=1}^{T} C^{\text{actual}}_t}{\sum_{t=1}^{T} C^{\text{expected}}_t}$$
-
-### 2. Compounding Loss Due to Friction ($CL_f$)
-Measures the absolute terminal opportunity cost caused by contribution disruptions:
-$$CL_f = \max\left(0, V_{\text{ideal}}(T) - V_{\text{actual}}(T)\right)$$
-
-### 3. Investor Discipline Score ($DS$)
-A composite index ($0 \le DS \le 100$) penalizing cashflow disruptions (40% weight) and compound opportunity loss (60% weight):
-$$DS = \max\left(0, \min\left(100, 100 - \left[40 \times (1 - CCR) + 60 \times \frac{CL_f}{V_{\text{ideal}}(T)}\right]\right)\right)$$
-
-### 4. Stochastic Monte Carlo Engine
-Draws a normally distributed return for each month and floors portfolio value at zero. Annual
-volatility is scaled to monthly by dividing by $\sqrt{12}$ rather than by 12, which would
-understate month-to-month dispersion.
-
-This is **additive normal returns**, not geometric Brownian motion. GBM uses lognormal returns;
-this applies $(1 + \mathcal{N}(\mu, \sigma))$ directly. The simpler model is enough for showing
-how outcomes spread, and calling it GBM would be wrong.
-$$\sigma_{\text{month}} = \frac{\sigma_{\text{annual}}}{\sqrt{12}}$$
-$$V(t) = \max\left(0, \left(V(t-1) + C_t\right) \times \left(1 + \mathcal{N}\left(\mu_{\text{month}}, \sigma_{\text{month}}\right)\right)\right)$$
+This is additive normal returns, not geometric Brownian motion — GBM uses lognormal returns, this
+applies `(1 + N(μ, σ))` directly. The simpler model is enough for showing how outcomes spread, and
+calling it GBM would be wrong.
 
 ---
 
-## ✨ Key Features
+## Technical highlights
 
-- **Dynamic Cashflow Scheduler**: Supports arbitrary discrete shocks (`SKIP`, `REDUCE`, `INCREASE`), continuous date ranges (`PAUSE_RANGE`), and annual percentage increments (`STEP_UP`).
-- **Pre-Compiled Simulation Pipelines**: Cashflow arrays are compiled in $\mathcal{O}(T)$ time before executing $\mathcal{O}(N \times T)$ Monte Carlo passes.
-- **TypeScript Frontend**: React client that type-checks cleanly under `tsc --noEmit` with `strict` enabled, custom hooks (`useDebounce`), and Recharts charts.
-- **Mutual Fund Discovery & Comparison**: Search, filter, and compare mutual fund CAGR metrics and expense ratios with automated seed data.
-- **FastAPI Backend**: lifespan startup handler, Pydantic v2 request validation, SQLAlchemy models created on startup via `create_all` (there are no migrations), and JWT authentication on the history and insights endpoints.
+- **React 19 + TypeScript** in strict mode, with an error boundary and a debounced fund search
+- **FastAPI** with Pydantic v2 request validation and a lifespan startup handler
+- **PostgreSQL + SQLAlchemy** — foreign keys, cascading deletes and CHECK constraints
+- **JWT auth** on the history and reporting endpoints
+- **One transaction per run** — the simulation and all of its event rows commit together or not at all
+- **A composite index** on the history lookup, evaluated with `EXPLAIN ANALYZE`
+  (plans in [`docs/index-evaluation.md`](docs/index-evaluation.md))
+- **Tests** — 17 backend tests against a real database, plus TypeScript type-checking and jest
 
 ---
 
-## 🚀 Quickstart
+## Database
+
+```
+users ──1:N──> simulations ──1:N──> simulation_events
+```
+
+A user owns many simulations; a simulation owns the friction events that produced it. Both foreign
+keys cascade on delete, so removing a user cleans up everything below them and leaves nothing
+orphaned.
+
+The events matter. Before this, they were sent to the API, used to build the contribution schedule,
+and then thrown away — so a saved run could not be explained or re-run. Storing them makes a
+historical run reproducible.
+
+CHECK constraints mirror bounds the engine already enforces in code (discipline score 0–100, CCR
+0–1, valid event types, a pause that cannot end before it starts). Having them in the database too
+means a future change can't quietly write a score of 150.
+
+---
+
+## Setup
 
 ### Prerequisites
-- **Python** 3.10+
-- **Node.js** 20+ and npm
-- **PostgreSQL** 14+ running locally
+
+Python 3.10+, Node.js 20+, PostgreSQL 14+.
 
 ### 1. Database
-
-Create a role and database. Choose your own password and use it consistently below.
 
 ```bash
 psql -U postgres -c "CREATE ROLE sip_app LOGIN PASSWORD '<YOUR_PASSWORD>';"
@@ -135,8 +140,6 @@ Tables are created automatically the first time the backend starts.
 cp .env.example .env
 ```
 
-Then edit `.env`:
-
 ```
 DATABASE_URL=postgresql+psycopg2://sip_app:<YOUR_PASSWORD>@localhost:5432/sip
 SECRET_KEY=<GENERATE_A_SECRET_KEY>
@@ -144,30 +147,26 @@ DEFAULT_ADMIN_USER=admin
 DEFAULT_ADMIN_PASSWORD=<CHOOSE_A_LOCAL_PASSWORD>
 ```
 
-Generate a signing key with:
+Generate a key with:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-`.env` is gitignored and must never be committed. If `SECRET_KEY` is left unset the server
-generates a random one per process, so tokens stop working on restart. If
-`DEFAULT_ADMIN_PASSWORD` is unset, no account is seeded and you will not be able to sign in.
+`.env` is gitignored and should never be committed. If `SECRET_KEY` is unset the server generates a
+random one per process, so tokens stop working on restart. If `DEFAULT_ADMIN_PASSWORD` is unset no
+account is seeded and you won't be able to sign in.
 
 ### 3. Backend
 
 ```bash
-git clone https://github.com/Anubhavkumarkanth/sip-friction-analyzer.git
-cd sip-friction-analyzer
-
 python -m venv .venv
 source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
-
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload
 ```
 
-API docs: **`http://localhost:8000/docs`**
+API docs at `http://localhost:8000/docs`.
 
 ### 4. Frontend
 
@@ -177,18 +176,19 @@ npm install
 npm run dev
 ```
 
-App: **`http://localhost:5173`** — sign in with the account seeded from `.env`.
+App at `http://localhost:5173`. Sign in with the account seeded from `.env`.
 
 ---
 
-## 🧪 Automated Testing
-
-The backend tests run against the configured PostgreSQL database. They create a uniquely named
-throwaway user per test and delete it afterwards, so they do not disturb existing data.
+## Tests
 
 ```bash
 python -m pytest test_backend.py -q
 ```
+
+17 tests against the configured PostgreSQL database. Each creates a uniquely named throwaway user
+and deletes it afterwards, so they don't disturb existing data. They cover the transaction, the
+cascade delete, auth enforcement, and that a search matching nothing returns an empty list.
 
 ```bash
 cd frontend
@@ -198,21 +198,33 @@ npm test
 
 ---
 
-## 🐳 Docker
+## Docker
 
-A multi-stage `Dockerfile` builds the frontend and serves it from the FastAPI app:
+The `Dockerfile` builds the frontend and serves it from the FastAPI app:
 
 ```bash
 docker build -t sip-friction-analyzer .
 docker run --rm -p 8000:8000 --env-file .env sip-friction-analyzer
 ```
 
-Note: the image is provided as-is and has not been built or tested in the current environment.
-The supported path is the local setup above.
+The image hasn't been built or tested in my current environment — the local setup above is the
+supported path.
 
 ---
 
-## 📁 Project Structure
+## Limitations
+
+- The return model is deliberately simple: a normally distributed monthly return with constant
+  volatility. Real markets have fat tails, volatility clustering and serial correlation, none of
+  which are modelled.
+- Fund data is a small hardcoded reference catalogue for exercising the UI. It is not live market
+  data and the figures should not be used to pick anything.
+- Everything is pre-tax and ignores expense ratios, exit loads and inflation.
+- This is an educational simulator, not financial advice.
+
+---
+
+## Project structure
 
 ```text
 sip-friction-analyzer/
@@ -243,6 +255,6 @@ sip-friction-analyzer/
 
 ---
 
-## 📄 License
+## License
 
-Distributed under the [MIT License](LICENSE).
+[MIT](LICENSE)
