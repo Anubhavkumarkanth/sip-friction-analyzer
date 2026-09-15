@@ -36,7 +36,7 @@ flowchart TD
     subgraph Backend ["FastAPI REST API"]
         Router["FastAPI Routes & Validation"]
         Engine["SIP Simulation Engine"]
-        Stochastic["Monte Carlo Engine (GBM)"]
+        Stochastic["Monte Carlo Engine"]
         Friction["Friction Metric Calculator"]
         Auth["OAuth2 / JWT Security"]
         Router --> Engine
@@ -89,7 +89,13 @@ A composite index ($0 \le DS \le 100$) penalizing cashflow disruptions (40% weig
 $$DS = \max\left(0, \min\left(100, 100 - \left[40 \times (1 - CCR) + 60 \times \frac{CL_f}{V_{\text{ideal}}(T)}\right]\right)\right)$$
 
 ### 4. Stochastic Monte Carlo Engine
-Simulates $N$ market paths by drawing a normally distributed return each month, with square-root annual-to-monthly volatility scaling. Note this is **additive normal returns floored at zero**, not geometric Brownian motion: GBM uses lognormal returns, whereas this applies $(1 + \mathcal{N}(\mu, \sigma))$ directly.
+Draws a normally distributed return for each month and floors portfolio value at zero. Annual
+volatility is scaled to monthly by dividing by $\sqrt{12}$ rather than by 12, which would
+understate month-to-month dispersion.
+
+This is **additive normal returns**, not geometric Brownian motion. GBM uses lognormal returns;
+this applies $(1 + \mathcal{N}(\mu, \sigma))$ directly. The simpler model is enough for showing
+how outcomes spread, and calling it GBM would be wrong.
 $$\sigma_{\text{month}} = \frac{\sigma_{\text{annual}}}{\sqrt{12}}$$
 $$V(t) = \max\left(0, \left(V(t-1) + C_t\right) \times \left(1 + \mathcal{N}\left(\mu_{\text{month}}, \sigma_{\text{month}}\right)\right)\right)$$
 
@@ -210,29 +216,29 @@ The supported path is the local setup above.
 
 ```text
 sip-friction-analyzer/
-├── .github/workflows/       # GitHub Actions CI pipeline
+├── .github/workflows/       # CI: lint, type-check, tests, build
+├── docs/
+│   └── index-evaluation.md  # EXPLAIN ANALYZE output for the history index
 ├── engine/
-│   ├── simulation.py        # Core SIP calculation & Monte Carlo engine
-│   └── friction.py          # CCR, CLD, and Discipline Score metrics
+│   ├── simulation.py        # Compounding loop and Monte Carlo paths
+│   └── friction.py          # CCR, compounding loss, discipline score
 ├── frontend/
-│   ├── src/
-│   │   ├── components/      # Reusable UI, Layout, and ErrorBoundary (TypeScript)
-│   │   ├── hooks/           # Custom React hooks (useDebounce)
-│   │   ├── pages/           # Dashboard, Monte Carlo, FundExplorer, CompareFunds
-│   │   ├── services/        # Typed Axios API layer
-│   │   ├── types/           # Shared TypeScript interfaces & types
-│   │   └── utils/           # Currency formatters & client calculations
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.js
-├── auth.py                  # OAuth2 password flow & JWT token utilities
-├── config.py                # Pydantic BaseSettings environment configuration
-├── database.py              # SQLAlchemy engine & session factory
-├── main.py                  # FastAPI routers & lifespan lifecycle handlers
-├── models.py                # SQLAlchemy ORM models
-├── Dockerfile               # Multi-stage production container build
-├── docker-compose.yml       # Container orchestration configuration
-└── test_backend.py          # Pytest integration & unit test suite
+│   └── src/
+│       ├── components/      # UI primitives, layout, error boundary
+│       ├── hooks/           # useDebounce
+│       ├── pages/           # Login, Dashboard, MonteCarlo, FundExplorer, CompareFunds
+│       ├── services/        # Typed axios layer and token handling
+│       ├── types/           # Shared TypeScript interfaces
+│       └── utils/           # Currency formatting
+├── auth.py                  # Password hashing and JWT
+├── config.py                # Settings loaded from .env
+├── database.py              # SQLAlchemy engine and session
+├── main.py                  # FastAPI app and routes
+├── models.py                # Tables, foreign keys, constraints
+├── reset_db.py              # Drops and recreates the fund table
+├── test_backend.py          # Backend tests
+├── requirements.txt
+└── Dockerfile
 ```
 
 ---

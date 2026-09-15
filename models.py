@@ -1,15 +1,13 @@
-"""SQLAlchemy models.
+"""Database tables.
 
-The schema is deliberately relational: a user owns many simulations, and a
-simulation owns many friction events. Before this, the three tables had no
-foreign keys at all and the friction events sent to /simulate were used to build
-the contribution schedule and then thrown away, so a saved run could not be
-reproduced or even attributed to anyone.
+A user owns many simulations; a simulation owns many friction events. The tables
+previously had no foreign keys at all, and the events sent to /simulate were used
+to build the contribution schedule and then discarded, so a saved run could not
+be reproduced or attributed to anyone.
 
-CHECK constraints mirror guarantees the simulation engine already makes. The
-engine clamps the discipline score to 0-100 and the CCR to 0-1; the database
-enforces the same bounds so a future code change cannot quietly write a value
-that the rest of the application would treat as impossible.
+The CHECK constraints mirror bounds the engine already enforces in code. Having
+them in the database too means a future change cannot quietly write a discipline
+score of 150.
 """
 
 from sqlalchemy import (
@@ -44,11 +42,10 @@ class User(Base):
 
 
 class Simulation(Base):
-    """One saved run of the simulator.
+    """One saved run.
 
-    The inputs are stored alongside the results so a historical run is
-    self-describing: without monthly_amount / annual_return / years, a saved
-    row could not be explained or re-run later.
+    Inputs are stored next to the results so an old run can still be explained or
+    re-run; without them the row is just four numbers.
     """
 
     __tablename__ = "simulations"
@@ -95,12 +92,12 @@ class Simulation(Base):
 
 
 class SimulationEvent(Base):
-    """A single friction event belonging to a saved simulation.
+    """One friction event belonging to a simulation.
 
-    The columns are nullable because the event types genuinely use different
-    fields: SKIP needs only a month, PAUSE_RANGE needs a start and end, STEP_UP
-    needs a yearly growth rate. The CHECK constraints validate each field on its
-    own terms rather than pretending every event has every attribute.
+    Most columns are nullable because the event types use different fields: SKIP
+    needs only a month, PAUSE_RANGE a start and end, STEP_UP a growth rate. The
+    CHECK constraints validate each field on its own terms instead of pretending
+    every event has every attribute.
     """
 
     __tablename__ = "simulation_events"
@@ -144,8 +141,7 @@ class SimulationEvent(Base):
 class Fund(Base):
     """Reference data for the fund comparison screens.
 
-    Figures here are illustrative sample data used to exercise the UI. They are
-    not live market data and must not be presented as such.
+    Sample figures for exercising the UI. Not live market data.
     """
 
     __tablename__ = "funds"
@@ -165,14 +161,13 @@ class Fund(Base):
     )
 
 
-# Composite index supporting the history endpoint, whose query is
-# "this user's simulations, newest first".
+# Supports the history query: one user's simulations, newest first.
 #
-# user_id leads because it is the equality predicate that narrows the table to
-# one user. created_at DESC follows so that, within a user, rows are already in
-# the order the query asks for. The reverse order would be far less useful here:
-# a B-tree seeks efficiently only on its leading column, and this query has no
-# filter on created_at at all.
+# user_id leads because it is the equality predicate that narrows the table.
+# created_at follows so rows come back roughly in the order asked for. The
+# reverse order would be near useless: a B-tree seeks only on its leading
+# column, and this query never filters on created_at.
+# Captured plans are in docs/index-evaluation.md.
 Index(
     "ix_simulations_user_created",
     Simulation.user_id,

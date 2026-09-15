@@ -295,11 +295,11 @@ def simulate_sip(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Run a simulation and save it, with its friction events, for this user.
+    """Run a simulation and save it, with its events, for this user.
 
-    The simulation row and all of its event rows are written in a single
-    transaction. A run saved without the events that produced it could not be
-    explained or reproduced later, so a partial write is worse than no write.
+    The run and its event rows go in one transaction: a run saved without the
+    events that produced it cannot be explained later, so a partial write is
+    worse than no write.
     """
     try:
         sim = SIPSimulator(
@@ -381,13 +381,9 @@ def list_simulations(
 ):
     """This user's saved runs, newest first, with a count of friction events.
 
-    A LEFT OUTER JOIN is used rather than an inner join so that a clean run -
-    one with no friction events at all - still appears in the history with a
-    count of zero. An inner join would silently hide exactly the baseline runs
-    a user most wants to compare against.
-
-    This is the query the composite index on (user_id, created_at DESC) exists
-    to serve.
+    LEFT JOIN rather than inner, so a clean run with no friction still appears
+    with a count of zero. An inner join would hide exactly the baseline runs you
+    most want to compare against.
     """
     rows = (
         db.query(Simulation, func.count(SimulationEvent.id).label("event_count"))
@@ -423,11 +419,10 @@ def get_simulation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """One saved run with the friction events that produced it.
+    """One saved run with the events that produced it.
 
-    The user_id filter is part of the lookup rather than a check afterwards, so
-    requesting someone else's simulation id returns 404 instead of leaking that
-    the row exists.
+    The user_id filter is part of the lookup, not a check afterwards, so asking
+    for someone else's id returns 404 rather than leaking that it exists.
     """
     simulation = (
         db.query(Simulation)
@@ -455,9 +450,8 @@ def get_simulation(
     )
 
 
-# Written as raw SQL rather than through the ORM. The ORM is the right tool for
-# loading objects, but this returns an aggregate report that maps to no entity,
-# and the SQL says what it does more plainly than the query-builder equivalent.
+# Raw SQL rather than the ORM: this is an aggregate report that maps to no
+# entity, and it reads more plainly than the query-builder equivalent.
 EVENT_TYPE_INSIGHTS_SQL = text("""
     SELECT e.event_type                                    AS event_type,
            COUNT(DISTINCT s.id)                            AS simulation_count,
@@ -481,10 +475,10 @@ def event_type_insights(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Which kinds of friction cost this user the most, across all saved runs.
+    """Which kinds of friction cost this user the most.
 
-    COUNT(DISTINCT s.id) rather than COUNT(*): a single run can contain several
-    events of the same type, which would otherwise be counted more than once.
+    COUNT(DISTINCT s.id) because one run can hold several events of the same
+    type, which COUNT(*) would double-count.
     """
     rows = db.execute(EVENT_TYPE_INSIGHTS_SQL, {"user_id": current_user.id}).mappings().all()
 
@@ -571,12 +565,11 @@ def search_funds(
         raise HTTPException(status_code=500, detail="Search operation failed")
 
 
-# Serve the built frontend, when one has been built.
+# Serve the built frontend, if one exists.
 #
-# Mounted last and at "/" because a mount matches every path beneath it: placed
-# earlier it would shadow the API routes above. The Dockerfile builds
-# frontend/dist and copies it here, but nothing served it before this mount, so
-# the container exposed only the JSON API.
+# Mounted last: a mount at "/" matches everything beneath it, so placed earlier
+# it would shadow the API routes. The Dockerfile builds frontend/dist and copies
+# it here, but nothing served it until this mount existed.
 _frontend_dist = Path(__file__).resolve().parent / "frontend" / "dist"
 if _frontend_dist.is_dir():
     app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
