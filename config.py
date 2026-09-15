@@ -6,13 +6,11 @@ from pydantic_settings import BaseSettings
 
 
 def _secret_key() -> str:
-    """Return the signing key for JWTs.
+    """JWT signing key.
 
-    There is deliberately no committed fallback value. If SECRET_KEY is not set,
-    a random key is generated for this process only, which means tokens stop
-    working when the server restarts. That is inconvenient on purpose: it makes
-    a missing key obvious in development instead of shipping a key that is
-    published in the repository and therefore lets anyone mint valid tokens.
+    No committed fallback - a published key would let anyone mint valid tokens.
+    If SECRET_KEY is unset we generate a random one per process, so tokens break
+    on restart, which makes the missing setting obvious.
     """
     return os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
 
