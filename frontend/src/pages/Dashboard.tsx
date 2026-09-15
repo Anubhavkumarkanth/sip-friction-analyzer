@@ -133,6 +133,16 @@ const Dashboard: FC = () => {
     void loadHistory();
   }, [loadHistory]);
 
+  // Load the fund list on mount. Without this the panel rendered an empty
+  // result and the "No funds found" message before any search had actually
+  // run, which read as a failure rather than an untouched filter.
+  useEffect(() => {
+    fundsAPI
+      .search()
+      .then(setPlatformFundResults)
+      .catch(() => setPlatformFundResults([]));
+  }, []);
+
   // Load prefilled fund from navigation
   useEffect(() => {
     const prefilledFund = (location.state as any)?.prefilledFund;
