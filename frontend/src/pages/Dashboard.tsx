@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FC, ChangeEvent, MouseEvent } from 'react';
+import { useState, useEffect, useCallback, FC, ChangeEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   AreaChart,
@@ -30,7 +30,7 @@ import {
   FrictionEvent,
   SIPInputs,
   SimulationResult,
-  ChartDataPoint,
+  SimulationSummary,
   StatBoxProps,
 } from '../types';
 import './Dashboard.css';
@@ -115,7 +115,23 @@ const Dashboard: FC = () => {
   const [results, setResults] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<Partial<SIPInputs>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [history, setHistory] = useState<SimulationSummary[]>([]);
   const location = useLocation();
+
+  // Past runs for the signed-in user, newest first.
+  const loadHistory = useCallback(async (): Promise<void> => {
+    try {
+      setHistory(await simulationAPI.history(5));
+    } catch {
+      // History is supplementary; a failure here must not block simulating.
+      setHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
 
   // Load prefilled fund from navigation
   useEffect(() => {
@@ -200,127 +216,39 @@ const Dashboard: FC = () => {
     }
 
     setLoading(true);
+    setApiError(null);
     try {
-      // Parse inputs
-      const monthlyAmount = parseFloat(inputs.monthly_amount);
       const annReturn = overrideFund
         ? parseFloat(String(overrideFund.return_5y))
         : parseFloat(inputs.annual_return);
-      const years = parseFloat(inputs.years);
 
-      const monthlyReturn = annReturn / 100 / 12;
-      const totalMonths = Math.floor(years * 12);
-      const simEvents = events.map(({ id, ...rest }) => rest);
-
-      let idealValue = 0;
-      let actualValue = 0;
-      let monthlyBase = monthlyAmount;
-      let totalExpected = 0;
-      let totalActual = 0;
-      const eventMap: { [key: number]: FrictionEvent[] } = {};
-      const pauseRanges: Array<[number, number]> = [];
-      let stepUpRate = 0;
-
-      // Parse events
-      simEvents.forEach((event) => {
-        if (event.type === 'PAUSE_RANGE') {
-          pauseRanges.push([
-            Number(event.start_month) || 0,
-            Number(event.end_month) || 0,
-          ]);
-        } else if (event.type === 'STEP_UP') {
-          stepUpRate = Number(event.yearly_growth) || 0;
-        } else {
-          const month = Number(event.month) || 0;
-          if (month > 0) {
-            if (!eventMap[month]) eventMap[month] = [];
-            eventMap[month].push(event);
-          }
-        }
+      // The simulation runs on the server.
+      //
+      // These same rules used to be reimplemented here in TypeScript, so the
+      // compounding loop and the discipline-score formula existed twice, in two
+      // languages, with nothing keeping them in step. The dashboard never
+      // called the API at all, and nothing was ever saved. Now there is one
+      // implementation, and every run is persisted with the events that
+      // produced it.
+      const result = await simulationAPI.run({
+        monthly_amount: parseFloat(inputs.monthly_amount),
+        annual_return: annReturn,
+        years: parseFloat(inputs.years),
+        // The id on each event is client-only, for list keys and editing.
+        events: events.map((event) => ({
+          type: event.type,
+          month: event.month,
+          factor: event.factor,
+          yearly_growth: event.yearly_growth,
+          start_month: event.start_month,
+          end_month: event.end_month,
+        })),
       });
 
-      const chartData: ChartDataPoint[] = [];
-
-      // Run simulation month by month
-      for (let month = 1; month <= totalMonths; month++) {
-        // Ideal calculation
-        idealValue = (idealValue + monthlyBase) * (1 + monthlyReturn);
-
-        // Actual calculation
-        let contribution = monthlyBase;
-        totalExpected += monthlyBase;
-
-        // Check pause ranges
-        for (let i = 0; i < pauseRanges.length; i++) {
-          const [start, end] = pauseRanges[i];
-          if (start > 0 && end > 0 && month >= start && month <= end) {
-            contribution = 0;
-            break;
-          }
-        }
-
-        // Check event map
-        if (eventMap[month]) {
-          for (let i = 0; i < eventMap[month].length; i++) {
-            const ev = eventMap[month][i];
-            if (ev.type === 'SKIP') {
-              contribution = 0;
-            } else if (ev.type === 'REDUCE') {
-              contribution = monthlyBase * (Number(ev.factor) || 1);
-            } else if (ev.type === 'INCREASE') {
-              monthlyBase = monthlyBase * (Number(ev.factor) || 1);
-              contribution = monthlyBase;
-            }
-          }
-        }
-
-        totalActual += contribution;
-
-        // Step up annually
-        if (stepUpRate && month % 12 === 0) {
-          monthlyBase = monthlyBase * (1 + stepUpRate);
-        }
-
-        actualValue = (actualValue + contribution) * (1 + monthlyReturn);
-
-        // Record annual data
-        if (month % 12 === 0) {
-          chartData.push({
-            year: month / 12,
-            ideal: Math.round(idealValue * 100) / 100,
-            actual: Math.round(actualValue * 100) / 100,
-            difference: Math.round((idealValue - actualValue) * 100) / 100,
-          });
-        }
-      }
-
-      // Calculate metrics
-      const cld = Math.max(idealValue - actualValue, 0);
-      const ccr = totalExpected > 0 ? totalActual / totalExpected : 1;
-      const cldRatio = idealValue > 0 ? cld / idealValue : 0;
-      const penaltyScore = 40 * (1 - ccr) + 60 * cldRatio;
-      const disciplineScore = Math.max(
-        0,
-        Math.min(100, 100 - penaltyScore)
-      );
-
-      const finalResults: SimulationResult = {
-        ideal_value: Math.round(idealValue * 100) / 100,
-        actual_value: Math.round(actualValue * 100) / 100,
-        compounding_loss: Math.round(cld * 100) / 100,
-        discipline_score: Math.round(disciplineScore * 100) / 100,
-        ccr: Math.round(ccr * 10000) / 10000,
-        total_expected_contribution: Math.round(totalExpected * 100) / 100,
-        total_actual_contribution: Math.round(totalActual * 100) / 100,
-        chart_data: chartData,
-      };
-
-      setResults(finalResults);
+      setResults(result);
+      await loadHistory();
     } catch (err) {
-      console.error('Simulation error:', err);
-      setValidationErrors({
-        monthly_amount: handleApiError(err),
-      });
+      setApiError(handleApiError(err));
     } finally {
       setLoading(false);
     }
@@ -485,7 +413,53 @@ const Dashboard: FC = () => {
           >
             Run Simulation
           </Button>
+
+          {apiError && (
+            <p
+              role="alert"
+              style={{
+                marginTop: '0.75rem',
+                marginBottom: 0,
+                color: 'var(--danger)',
+                fontSize: '0.85rem',
+              }}
+            >
+              {apiError}
+            </p>
+          )}
         </GlassCard>
+
+        {/* Past runs, read back from the database */}
+        {history.length > 0 && (
+          <GlassCard hoverEffect={false} style={{ marginTop: '1rem' }}>
+            <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Recent runs</h4>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {history.map((run) => (
+                <li
+                  key={run.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.45rem 0',
+                    borderBottom: '1px solid var(--border, rgba(255,255,255,0.08))',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  <span>{new Date(run.created_at).toLocaleDateString()}</span>
+                  <span>
+                    {formatINR(run.monthly_amount)}/mo · {run.years}y
+                  </span>
+                  <span>
+                    {run.event_count} event{run.event_count === 1 ? '' : 's'}
+                  </span>
+                  <strong>{run.discipline_score.toFixed(1)}</strong>
+                </li>
+              ))}
+            </ul>
+          </GlassCard>
+        )}
 
         {/* Fund Review Card */}
         {selectedFund && (
