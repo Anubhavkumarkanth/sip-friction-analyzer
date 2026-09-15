@@ -16,8 +16,16 @@ export interface Fund {
 // ==================== SIP Simulation Types ====================
 export type EventType = 'PAUSE_RANGE' | 'STEP_UP' | 'REDUCE' | 'SKIP' | 'INCREASE';
 
+/**
+ * A friction event as the UI holds it.
+ *
+ * `id` is required and client-only: it exists so React can key the list and so
+ * an event can be edited or removed before the simulation is run. It is
+ * stripped before the request is sent, which is what `SimulationEventInput`
+ * below describes.
+ */
 export interface FrictionEvent {
-  id?: number;
+  id: number;
   type: EventType;
   month?: number;
   factor?: number;
@@ -25,6 +33,9 @@ export interface FrictionEvent {
   start_month?: number;
   end_month?: number;
 }
+
+/** A friction event as the API accepts it, without the client-only id. */
+export type SimulationEventInput = Omit<FrictionEvent, 'id'>;
 
 export interface SIPInputs {
   monthly_amount: string;
@@ -36,9 +47,12 @@ export interface ChartDataPoint {
   year: number;
   ideal: number;
   actual: number;
+  /** ideal - actual, supplied by the API and shaded on the chart. */
+  difference: number;
 }
 
 export interface SimulationResult {
+  simulation_id: number;
   ideal_value: number;
   actual_value: number;
   compounding_loss: number;
@@ -53,7 +67,32 @@ export interface SimulationRequest {
   monthly_amount: number;
   annual_return: number;
   years: number;
-  events?: FrictionEvent[];
+  events?: SimulationEventInput[];
+}
+
+// ==================== Saved Simulations ====================
+export interface SimulationSummary {
+  id: number;
+  created_at: string;
+  monthly_amount: number;
+  annual_return: number;
+  years: number;
+  ideal_value: number;
+  actual_value: number;
+  compounding_loss: number;
+  discipline_score: number;
+  ccr: number;
+  event_count: number;
+}
+
+export interface SimulationDetail extends SimulationSummary {
+  events: SimulationEventInput[];
+}
+
+// ==================== Auth ====================
+export interface AuthToken {
+  access_token: string;
+  token_type: string;
 }
 
 export interface MonteCarloRequest extends SimulationRequest {

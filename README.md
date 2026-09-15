@@ -1,12 +1,11 @@
 # 📈 SIP Friction Analyzer
 
-[![CI Pipeline](https://github.com/Anubhavkumarkanth/sip-friction-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/Anubhavkumarkanth/sip-friction-analyzer/actions)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19_TypeScript-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A high-performance financial simulation engine and interactive analytics platform that quantifies **behavioral friction and opportunity loss** in Systematic Investment Plans (SIPs).
+A web application that estimates how **skipped or reduced contributions** affect the long-term outcome of a Systematic Investment Plan (SIP).
 
 ---
 
@@ -60,7 +59,8 @@ flowchart TD
 
 1. **Cashflow Pre-Computation ($\mathcal{O}(T)$ vs $\mathcal{O}(N \times T)$)**:
    - *Problem*: Running 1,000–10,000 Monte Carlo paths with recurring annual step-ups and multiple discrete pause ranges was bottlenecked by evaluating event conditionals inside nested month loops.
-   - *Solution*: Pre-compiled the cashflow schedule into an indexed array once in $\mathcal{O}(T)$ time before executing stochastic paths, achieving a 15x performance speedup in simulation response latency.
+   - *Solution*: Pre-compiled the cashflow schedule into an indexed array once in $\mathcal{O}(T)$ time before executing stochastic paths, so the event conditionals are evaluated once rather than inside the inner month loop.
+   - *Note*: this was done to avoid redundant work, not on the basis of a benchmark. No timing comparison was measured, so no speedup figure is claimed.
 
 2. **Square-Root Volatility Scaling**:
    - *Problem*: Naive stochastic simulators divide annualized volatility by 12 ($\sigma / 12$), which severely suppresses monthly return dispersion.
@@ -89,7 +89,7 @@ A composite index ($0 \le DS \le 100$) penalizing cashflow disruptions (40% weig
 $$DS = \max\left(0, \min\left(100, 100 - \left[40 \times (1 - CCR) + 60 \times \frac{CL_f}{V_{\text{ideal}}(T)}\right]\right)\right)$$
 
 ### 4. Stochastic Monte Carlo Engine
-Simulates $N$ market realizations using geometric Brownian motion with square-root annual-to-monthly volatility scaling:
+Simulates $N$ market paths by drawing a normally distributed return each month, with square-root annual-to-monthly volatility scaling. Note this is **additive normal returns floored at zero**, not geometric Brownian motion: GBM uses lognormal returns, whereas this applies $(1 + \mathcal{N}(\mu, \sigma))$ directly.
 $$\sigma_{\text{month}} = \frac{\sigma_{\text{annual}}}{\sqrt{12}}$$
 $$V(t) = \max\left(0, \left(V(t-1) + C_t\right) \times \left(1 + \mathcal{N}\left(\mu_{\text{month}}, \sigma_{\text{month}}\right)\right)\right)$$
 
@@ -99,9 +99,9 @@ $$V(t) = \max\left(0, \left(V(t-1) + C_t\right) \times \left(1 + \mathcal{N}\lef
 
 - **Dynamic Cashflow Scheduler**: Supports arbitrary discrete shocks (`SKIP`, `REDUCE`, `INCREASE`), continuous date ranges (`PAUSE_RANGE`), and annual percentage increments (`STEP_UP`).
 - **Pre-Compiled Simulation Pipelines**: Cashflow arrays are compiled in $\mathcal{O}(T)$ time before executing $\mathcal{O}(N \times T)$ Monte Carlo passes.
-- **Strict TypeScript Frontend**: 100% type-safe React client with custom hooks (`useDebounce`), responsive glassmorphism UI, and Recharts analytics.
+- **TypeScript Frontend**: React client that type-checks cleanly under `tsc --noEmit` with `strict` enabled, custom hooks (`useDebounce`), and Recharts charts.
 - **Mutual Fund Discovery & Comparison**: Search, filter, and compare mutual fund CAGR metrics and expense ratios with automated seed data.
-- **Production-Ready FastAPI Backend**: Asynchronous lifespan handlers, Pydantic v2 schemas, automated migration, and JWT-based authentication.
+- **FastAPI Backend**: lifespan startup handler, Pydantic v2 request validation, SQLAlchemy models created on startup via `create_all` (there are no migrations), and JWT authentication on the history and insights endpoints.
 
 ---
 
@@ -109,62 +109,100 @@ $$V(t) = \max\left(0, \left(V(t-1) + C_t\right) \times \left(1 + \mathcal{N}\lef
 
 ### Prerequisites
 - **Python** 3.10+
-- **Node.js** 20+ & npm
+- **Node.js** 20+ and npm
+- **PostgreSQL** 14+ running locally
 
-### 1. Backend Setup
+### 1. Database
+
+Create a role and database. Choose your own password and use it consistently below.
 
 ```bash
-# Clone the repository
+psql -U postgres -c "CREATE ROLE sip_app LOGIN PASSWORD '<YOUR_PASSWORD>';"
+psql -U postgres -c "CREATE DATABASE sip OWNER sip_app;"
+```
+
+Tables are created automatically the first time the backend starts.
+
+### 2. Environment
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env`:
+
+```
+DATABASE_URL=postgresql+psycopg2://sip_app:<YOUR_PASSWORD>@localhost:5432/sip
+SECRET_KEY=<GENERATE_A_SECRET_KEY>
+DEFAULT_ADMIN_USER=admin
+DEFAULT_ADMIN_PASSWORD=<CHOOSE_A_LOCAL_PASSWORD>
+```
+
+Generate a signing key with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+`.env` is gitignored and must never be committed. If `SECRET_KEY` is left unset the server
+generates a random one per process, so tokens stop working on restart. If
+`DEFAULT_ADMIN_PASSWORD` is unset, no account is seeded and you will not be able to sign in.
+
+### 3. Backend
+
+```bash
 git clone https://github.com/Anubhavkumarkanth/sip-friction-analyzer.git
 cd sip-friction-analyzer
 
-# Create and activate virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
+source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
 
-# Install dependencies
 pip install -r requirements.txt
-
-# Start development server
 uvicorn main:app --reload --port 8000
 ```
-API Documentation will be live at: **`http://localhost:8000/docs`**
 
-### 2. Frontend Setup
+API docs: **`http://localhost:8000/docs`**
+
+### 4. Frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Client application will launch at: **`http://localhost:5173`**
 
----
-
-## 🐳 Docker Deployment
-
-Run the complete multi-stage containerized stack with Docker Compose:
-
-```bash
-docker compose up --build
-```
-The application will be accessible at `http://localhost:8000`.
+App: **`http://localhost:5173`** — sign in with the account seeded from `.env`.
 
 ---
 
 ## 🧪 Automated Testing
 
-### Backend Test Suite
+The backend tests run against the configured PostgreSQL database. They create a uniquely named
+throwaway user per test and delete it afterwards, so they do not disturb existing data.
+
 ```bash
-python -m pytest test_backend.py -v
+python -m pytest test_backend.py -q
 ```
 
-### Frontend Test & Lint Suite
 ```bash
 cd frontend
-npm run type-check
+npx tsc --noEmit
 npm test
 ```
+
+---
+
+## 🐳 Docker
+
+A multi-stage `Dockerfile` builds the frontend and serves it from the FastAPI app:
+
+```bash
+docker build -t sip-friction-analyzer .
+docker run --rm -p 8000:8000 --env-file .env sip-friction-analyzer
+```
+
+Note: the image is provided as-is and has not been built or tested in the current environment.
+The supported path is the local setup above.
 
 ---
 
