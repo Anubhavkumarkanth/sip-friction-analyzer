@@ -24,7 +24,6 @@ from auth import (
 from engine.simulation import SIPSimulator
 from engine.friction import calculate_ccr, calculate_cld, calculate_discipline_score
 
-# Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("sip_friction_api")
 
@@ -140,9 +139,6 @@ app.add_middleware(
 )
 
 
-# ==========================================
-# Schema Definitions
-# ==========================================
 class Event(BaseModel):
     type: Literal["SKIP", "REDUCE", "INCREASE", "PAUSE_RANGE", "STEP_UP"]
     month: Optional[int] = Field(None, ge=1, description="Target month for discrete events")
@@ -260,9 +256,6 @@ def _event_to_out(event: SimulationEvent) -> SimulationEventOut:
     )
 
 
-# ==========================================
-# Routes
-# ==========================================
 @app.get("/api", tags=["System"])
 def read_root():
     return {

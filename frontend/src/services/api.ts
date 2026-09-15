@@ -77,7 +77,6 @@ apiClient.interceptors.response.use(
   }
 );
 
-// ==================== Auth API ====================
 export const authAPI = {
   /**
    * Exchange credentials for a token.
@@ -103,7 +102,6 @@ export const authAPI = {
   isLoggedIn: (): boolean => authStorage.get() !== null,
 };
 
-// ==================== Funds API ====================
 export const fundsAPI = {
   search: async (
     query?: string,
@@ -129,7 +127,6 @@ export const fundsAPI = {
   },
 };
 
-// ==================== Simulation API ====================
 export const simulationAPI = {
   run: async (request: SimulationRequest): Promise<SimulationResult> => {
     const response = await apiClient.post<SimulationResult>('/simulate', request);
@@ -154,7 +151,6 @@ export const simulationAPI = {
   },
 };
 
-// ==================== Error Formatter ====================
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     if (error.response?.status === 401) {

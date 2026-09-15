@@ -1,6 +1,5 @@
 import React from 'react';
 
-// ==================== Fund Types ====================
 export interface Fund {
   id: number;
   name: string;
@@ -13,7 +12,6 @@ export interface Fund {
   invest_url: string;
 }
 
-// ==================== SIP Simulation Types ====================
 export type EventType = 'PAUSE_RANGE' | 'STEP_UP' | 'REDUCE' | 'SKIP' | 'INCREASE';
 
 /**
@@ -70,7 +68,6 @@ export interface SimulationRequest {
   events?: SimulationEventInput[];
 }
 
-// ==================== Saved Simulations ====================
 export interface SimulationSummary {
   id: number;
   created_at: string;
@@ -89,7 +86,6 @@ export interface SimulationDetail extends SimulationSummary {
   events: SimulationEventInput[];
 }
 
-// ==================== Auth ====================
 export interface AuthToken {
   access_token: string;
   token_type: string;
@@ -109,7 +105,6 @@ export interface MonteCarloResult {
   worst_case: number;
 }
 
-// ==================== Component Props Types ====================
 export interface StatBoxProps {
   title: string;
   value: string | number;
