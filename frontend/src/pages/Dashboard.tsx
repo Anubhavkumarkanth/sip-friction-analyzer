@@ -35,7 +35,6 @@ import {
 } from '../types';
 import './Dashboard.css';
 
-// ==================== Sub-Components ====================
 const StatBox: FC<StatBoxProps> = ({
   title,
   value,
@@ -100,7 +99,6 @@ const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload, label }) => {
   );
 };
 
-// ==================== Main Dashboard Component ====================
 const Dashboard: FC = () => {
   const [inputs, setInputs] = useState<SIPInputs>({
     monthly_amount: '10000',
@@ -155,7 +153,6 @@ const Dashboard: FC = () => {
     }
   }, [location.state]);
 
-  // ==================== Event Handlers ====================
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { id, value } = e.target;
     setInputs((prev) => ({
@@ -276,7 +273,6 @@ const Dashboard: FC = () => {
     }
   };
 
-  // ==================== Render ====================
   return (
     <div className="dashboard-container">
       {/* Left Panel - Inputs */}
