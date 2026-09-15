@@ -13,7 +13,7 @@ describe('formatINR', () => {
 
   it('should format crores with Cr', () => {
     expect(formatINR(10000000)).toBe('₹1.00Cr');
-    expect(formatINR(123456789)).toBe('₹1.23Cr');
+    expect(formatINR(123456789)).toBe('₹12.35Cr');   // 123456789 / 1e7 = 12.35 crore
   });
 
   it('should handle small values without suffix', () => {
