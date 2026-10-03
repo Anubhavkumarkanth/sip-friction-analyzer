@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
@@ -45,7 +45,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         username: Optional[str] = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:
+    except jwt.InvalidTokenError:
         raise credentials_exception
         
     user = db.query(User).filter(User.username == username).first()
