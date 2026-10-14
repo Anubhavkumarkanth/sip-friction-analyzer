@@ -9,6 +9,7 @@ import {
   MonteCarloRequest,
   MonteCarloResult,
 } from '../types';
+import { formatValidationDetail } from '../utils/formatValidationDetail';
 
 const TOKEN_KEY = 'sip_access_token';
 
@@ -157,9 +158,7 @@ export const handleApiError = (error: unknown): string => {
       return 'Your session has expired. Please sign in again.';
     }
     if (error.response?.data?.detail) {
-      return typeof error.response.data.detail === 'string'
-        ? error.response.data.detail
-        : JSON.stringify(error.response.data.detail);
+      return formatValidationDetail(error.response.data.detail);
     }
     if (error.response?.status === 404) {
       return 'Requested resource not found.';
