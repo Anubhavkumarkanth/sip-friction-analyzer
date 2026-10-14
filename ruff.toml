@@ -1,0 +1,7 @@
+line-length = 120
+extend-exclude = ["frontend"]
+
+[lint]
+# Unused imports and undefined names (F), plus basic style (E, W). Kept small on
+# purpose: the aim is to catch real mistakes, not to restyle working code.
+select = ["E", "F", "W"]

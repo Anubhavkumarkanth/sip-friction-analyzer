@@ -3,14 +3,16 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
-# Copy frontend source
+# Copy frontend source. npm ci installs exactly what package-lock.json says, the
+# same as CI does.
 COPY frontend/package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci
 
 COPY frontend/src ./src
 COPY frontend/public ./public
 COPY frontend/index.html ./
-COPY frontend/tsconfig.json ./
+# tsconfig.json points at tsconfig.node.json, and the build fails without it.
+COPY frontend/tsconfig.json frontend/tsconfig.node.json ./
 COPY frontend/vite.config.js ./
 COPY frontend/eslint.config.js ./
 
