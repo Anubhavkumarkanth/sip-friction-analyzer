@@ -84,6 +84,17 @@ This is additive normal returns, not geometric Brownian motion — GBM uses logn
 applies `(1 + N(μ, σ))` directly. The simpler model is enough for showing how outcomes spread, and
 calling it GBM would be wrong.
 
+### Request rules
+
+`POST /simulate` and `POST /monte-carlo` answer with a 422, not a 500, when an event is missing what
+its type needs (a REDUCE without a `factor`, a PAUSE_RANGE without an `end_month`), when a pause
+ends before it starts, or when an event begins after the plan ends. Each event keeps only the fields
+its type uses, so a SKIP is stored with a month and nothing else.
+
+`POST /monte-carlo` takes an optional `seed`, which makes the result repeatable. The endpoint is
+public and runs in pure Python, so one request is capped at 3.6 million simulated months
+(simulations × years × 12); a 5,000-simulation, 60-year run is the largest that fits.
+
 ---
 
 ## Technical highlights
@@ -95,7 +106,8 @@ calling it GBM would be wrong.
 - **One transaction per run** — the simulation and all of its event rows commit together or not at all
 - **A composite index** on the history lookup, evaluated with `EXPLAIN ANALYZE`
   (plans in [`docs/index-evaluation.md`](docs/index-evaluation.md))
-- **Tests** — 17 backend tests against a real database, plus TypeScript type-checking and jest
+- **Tests** — 55 backend tests (21 for the engine, checked against the closed-form annuity formula,
+  and 34 for the API against a real PostgreSQL), 15 frontend tests, strict TypeScript, ESLint and ruff
 
 ---
 
@@ -182,17 +194,32 @@ App at `http://localhost:5173`. Sign in with the account seeded from `.env`.
 
 ## Tests
 
+The API tests insert and delete rows, so they only run against a database whose name ends in
+`_test`; `conftest.py` stops the run for anything else. Create one and point `TEST_DATABASE_URL` at
+it:
+
 ```bash
-python -m pytest test_backend.py -q
+psql -U postgres -c "CREATE DATABASE sip_test OWNER sip_app;"
+export TEST_DATABASE_URL=postgresql+psycopg2://sip_app:<YOUR_PASSWORD>@localhost:5432/sip_test
+python -m pytest -q
 ```
 
-17 tests against the configured PostgreSQL database. Each creates a uniquely named throwaway user
-and deletes it afterwards, so they don't disturb existing data. They cover the transaction, the
-cascade delete, auth enforcement, and that a search matching nothing returns an empty list.
+On Windows PowerShell, set the variable with `$env:TEST_DATABASE_URL = "..."`. Without it the 34
+database tests are skipped and the 21 engine tests still run.
+
+- `test_engine.py` — the compounding, the friction events and the metrics, checked against
+  `P × ((1 + i)ⁿ − 1) / i × (1 + i)`, plus property tests over generated schedules and Monte Carlo
+  tests with a fixed seed. No database needed.
+- `test_backend.py` — request validation, ownership (one user cannot read or list another's runs),
+  token handling (expired, wrong key, `alg=none`, deleted user), the reporting query against a hand
+  calculation, the single-transaction write and the cascade delete. Each test creates uniquely named
+  users and removes them afterwards.
 
 ```bash
+ruff check .
 cd frontend
-npx tsc --noEmit
+npm run lint
+npm run type-check
 npm test
 ```
 
@@ -208,7 +235,8 @@ docker run --rm -p 8000:8000 --env-file .env sip-friction-analyzer
 ```
 
 The image hasn't been built or tested in my current environment — the local setup above is the
-supported path.
+supported path. See [DEPLOYMENT.md](DEPLOYMENT.md) for what it needs and what has and hasn't been
+checked.
 
 ---
 
@@ -220,6 +248,14 @@ supported path.
 - Fund data is a small hardcoded reference catalogue for exercising the UI. It is not live market
   data and the figures should not be used to pick anything.
 - Everything is pre-tax and ignores expense ratios, exit loads and inflation.
+- A STEP_UP or INCREASE event is compared against a flat "ideal" plan, so it can push the actual
+  result above the ideal. The loss is then reported as zero, not as a negative number.
+- There is one seeded account and no registration endpoint, so the "each user sees only their own
+  runs" rule is enforced and tested but not something the UI lets you exercise with a second account.
+- Nothing limits sign-in attempts, and `/monte-carlo` is public (capped per request, not per client).
+- The history index was measured on 20,000 synthetic rows; it speeds up looking up one user's runs
+  a lot more than it speeds up the whole endpoint. See
+  [`docs/index-evaluation.md`](docs/index-evaluation.md).
 - This is an educational simulator, not financial advice.
 
 ---
@@ -228,9 +264,11 @@ supported path.
 
 ```text
 sip-friction-analyzer/
-├── .github/workflows/       # CI: lint, type-check, tests, build
+├── .github/workflows/       # CI: lint, type-check, tests (with PostgreSQL), build
 ├── docs/
-│   └── index-evaluation.md  # EXPLAIN ANALYZE output for the history index
+│   └── index-evaluation.md  # EXPLAIN ANALYZE output for the history index, and how to re-measure it
+├── scripts/
+│   └── benchmark_history_index.py  # Reproduces the index measurement on seeded data
 ├── engine/
 │   ├── simulation.py        # Compounding loop and Monte Carlo paths
 │   └── friction.py          # CCR, compounding loss, discipline score
@@ -248,8 +286,12 @@ sip-friction-analyzer/
 ├── main.py                  # FastAPI app and routes
 ├── models.py                # Tables, foreign keys, constraints
 ├── reset_db.py              # Drops and recreates the fund table
-├── test_backend.py          # Backend tests
+├── conftest.py              # Test setup: database tests only run against a *_test database
+├── test_backend.py          # API tests (PostgreSQL)
+├── test_engine.py           # Engine and metric tests (no database)
+├── ruff.toml                # Python lint settings
 ├── requirements.txt
+├── .dockerignore
 └── Dockerfile
 ```
 
