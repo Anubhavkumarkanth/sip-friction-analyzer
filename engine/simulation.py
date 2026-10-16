@@ -1,6 +1,19 @@
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Optional, Tuple, Any
 import math
 import random
+
+
+def _required_factor(event: Dict[str, Any]) -> float:
+    """The multiplier on a REDUCE or INCREASE event.
+
+    Missing is an error. Falling back to 1.0 would quietly turn the event into a
+    no-op, and the dict an API request produces holds an explicit None rather
+    than omitting the key, so a plain .get("factor", 1.0) does not even do that.
+    """
+    factor = event.get("factor")
+    if factor is None:
+        raise ValueError(f"{event.get('type')} event requires a factor")
+    return float(factor)
 
 
 class SIPSimulator:
@@ -92,11 +105,9 @@ class SIPSimulator:
                     if e_type == "SKIP":
                         contribution = 0.0
                     elif e_type == "REDUCE":
-                        factor = float(event.get("factor", 1.0))
-                        contribution = current_base_amount * factor
+                        contribution = current_base_amount * _required_factor(event)
                     elif e_type == "INCREASE":
-                        factor = float(event.get("factor", 1.0))
-                        current_base_amount *= factor
+                        current_base_amount *= _required_factor(event)
                         contribution = current_base_amount
 
             actual_schedule.append(max(0.0, contribution))
@@ -140,12 +151,18 @@ class SIPSimulator:
         self,
         events: List[Dict[str, Any]],
         simulations: int = 1000,
-        volatility: float = 0.15
+        volatility: float = 0.15,
+        seed: Optional[int] = None,
     ) -> Dict[str, float]:
         """Performs Monte Carlo simulation modeling market return uncertainty.
 
         Annual volatility is correctly converted to monthly volatility using
         the square-root-of-time rule: sigma_monthly = sigma_annual / sqrt(12).
+
+        Each call draws from its own random.Random. The module-level
+        random.gauss keeps shared state, which is not safe when several requests
+        run in the server's thread pool at once, and it cannot be seeded per
+        request. With a seed the same inputs give the same percentiles.
         """
         if simulations <= 0:
             raise ValueError("Simulations count must be positive.")
@@ -154,6 +171,7 @@ class SIPSimulator:
 
         monthly_mean = self.monthly_return
         monthly_vol = float(volatility) / math.sqrt(12.0)
+        rng = random.Random(seed)
 
         results: List[float] = []
 
@@ -161,7 +179,7 @@ class SIPSimulator:
             val = 0.0
             for month in range(1, self.total_months + 1):
                 contribution = actual_schedule[month - 1]
-                monthly_rand_return = random.gauss(monthly_mean, monthly_vol)
+                monthly_rand_return = rng.gauss(monthly_mean, monthly_vol)
                 # Ensure portfolio value does not become negative on extreme negative shocks
                 val = max(0.0, (val + contribution) * (1.0 + monthly_rand_return))
             results.append(val)

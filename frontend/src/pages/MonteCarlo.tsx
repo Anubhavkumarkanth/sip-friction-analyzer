@@ -4,6 +4,7 @@ import { Target, Activity, CheckCircle, AlertTriangle, TrendingDown, TrendingUp,
 import GlassCard from '../components/ui/GlassCard';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import RiskSummary from '../components/RiskSummary';
 import { formatINR, formatINRAxis } from '../utils/formatINR';
 import { simulationAPI, handleApiError } from '../services/api';
 import { MonteCarloResult } from '../types';
@@ -69,6 +70,8 @@ const MonteCarlo: FC = () => {
   });
 
   const [results, setResults] = useState<MonteCarloResult | null>(null);
+  // The volatility the shown results came from. Editing the input afterwards must not change what the summary says.
+  const [ranVolatility, setRanVolatility] = useState(inputs.volatility);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -93,6 +96,7 @@ const MonteCarlo: FC = () => {
         events: [],
       });
       setResults(data);
+      setRanVolatility(inputs.volatility);
     } catch (err) {
       setErrorMessage(handleApiError(err));
     } finally {
@@ -228,14 +232,12 @@ const MonteCarlo: FC = () => {
 
               <GlassCard style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }} hoverEffect={false}>
                 <h3 style={{ color: 'var(--text-primary)' }}>Risk & Distribution Summary</h3>
-                <p style={{ marginTop: '1rem', lineHeight: '1.8', color: 'var(--text-main)' }}>
-                  Across 1,000 stochastic market realizations with annual standard deviation $\sigma = {(inputs.volatility * 100).toFixed(0)}\%$, terminal portfolio wealth spans from
-                  <strong style={{ color: 'var(--danger)', marginLeft: '0.4rem', marginRight: '0.4rem' }}>{formatINR(results.worst_case)}</strong>
-                  to
-                  <strong style={{ color: 'var(--success)', marginLeft: '0.4rem', marginRight: '0.4rem' }}>{formatINR(results.best_case)}</strong>.
-                  The 50th percentile (median) expectation is
-                  <strong style={{ color: 'var(--accent-primary)', marginLeft: '0.4rem' }}>{formatINR(results.p50)}</strong>.
-                </p>
+                <RiskSummary
+                  volatilityPct={ranVolatility * 100}
+                  worst={results.worst_case}
+                  best={results.best_case}
+                  median={results.p50}
+                />
               </GlassCard>
             </div>
           ) : (

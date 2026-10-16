@@ -8,7 +8,7 @@ from fastapi import FastAPI, Query, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session, selectinload
 
@@ -126,7 +126,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Simulates how skipped or reduced contributions affect the long-term outcome of a Systematic Investment Plan (SIP).",
+    description=(
+        "Simulates how skipped or reduced contributions affect the long-term "
+        "outcome of a Systematic Investment Plan (SIP)."
+    ),
     lifespan=lifespan
 )
 
@@ -139,6 +142,22 @@ app.add_middleware(
 )
 
 
+# Which fields each event type actually uses. Everything else is cleared, so a
+# SKIP never carries a stray factor into the database.
+EVENT_FIELDS_BY_TYPE = {
+    "SKIP": ("month",),
+    "REDUCE": ("month", "factor"),
+    "INCREASE": ("month", "factor"),
+    "PAUSE_RANGE": ("start_month", "end_month"),
+    "STEP_UP": ("yearly_growth",),
+}
+ALL_EVENT_FIELDS = ("month", "factor", "yearly_growth", "start_month", "end_month")
+
+# The Monte Carlo endpoint is unauthenticated and CPU-bound, so one request is
+# capped at simulations x months. 3.6M steps is about 1.7 s on a developer laptop.
+MAX_MONTE_CARLO_STEPS = 3_600_000
+
+
 class Event(BaseModel):
     type: Literal["SKIP", "REDUCE", "INCREASE", "PAUSE_RANGE", "STEP_UP"]
     month: Optional[int] = Field(None, ge=1, description="Target month for discrete events")
@@ -147,6 +166,26 @@ class Event(BaseModel):
     start_month: Optional[int] = Field(None, ge=1, description="Start month for PAUSE_RANGE")
     end_month: Optional[int] = Field(None, ge=1, description="End month for PAUSE_RANGE")
 
+    @model_validator(mode="after")
+    def check_fields_for_type(self) -> "Event":
+        """Reject an event that is missing what its type needs.
+
+        Without this a REDUCE with no factor reached the engine and came back as
+        a 500, and a PAUSE_RANGE ending before it started tripped the database
+        CHECK constraint at commit time, also a 500. Both are client mistakes
+        and should be a 422.
+        """
+        required = EVENT_FIELDS_BY_TYPE[self.type]
+        missing = [name for name in required if getattr(self, name) is None]
+        if missing:
+            raise ValueError(f"{self.type} requires {', '.join(missing)}")
+        if self.type == "PAUSE_RANGE" and self.end_month < self.start_month:
+            raise ValueError("PAUSE_RANGE end_month must not be before start_month")
+        for name in ALL_EVENT_FIELDS:
+            if name not in required:
+                setattr(self, name, None)
+        return self
+
 
 class SimulationRequest(BaseModel):
     monthly_amount: float = Field(..., gt=0, description="Base monthly SIP contribution amount (INR)")
@@ -154,10 +193,39 @@ class SimulationRequest(BaseModel):
     years: int = Field(..., gt=0, le=60, description="Investment horizon in years")
     events: List[Event] = Field(default_factory=list, description="List of investor behavioral/friction events")
 
+    @model_validator(mode="after")
+    def check_events_fall_inside_the_plan(self) -> "SimulationRequest":
+        """An event that starts after the plan ends changes nothing, so it is an error.
+
+        A pause may run past the end (it simply covers the rest of the plan);
+        only where an event begins has to be inside the horizon.
+        """
+        total_months = self.years * 12
+        for index, event in enumerate(self.events):
+            for name in ("month", "start_month"):
+                value = getattr(event, name)
+                if value is not None and value > total_months:
+                    raise ValueError(
+                        f"events[{index}].{name} is {value}, after the end of a "
+                        f"{self.years}-year ({total_months}-month) plan"
+                    )
+        return self
+
 
 class MonteCarloRequest(SimulationRequest):
     simulations: int = Field(1000, gt=0, le=10000, description="Number of stochastic simulation trials")
     volatility: float = Field(0.15, gt=0, le=1.0, description="Annualized portfolio standard deviation / volatility")
+    seed: Optional[int] = Field(None, ge=0, description="Fix the random draws: same request, same answer")
+
+    @model_validator(mode="after")
+    def check_request_is_not_too_large(self) -> "MonteCarloRequest":
+        steps = self.simulations * self.years * 12
+        if steps > MAX_MONTE_CARLO_STEPS:
+            raise ValueError(
+                f"simulations x months is {steps:,}; the limit is {MAX_MONTE_CARLO_STEPS:,}. "
+                "Lower the number of simulations or the number of years."
+            )
+        return self
 
 
 class ChartDataPoint(BaseModel):
@@ -501,7 +569,8 @@ def monte_carlo_simulation(request: MonteCarloRequest):
         result = sim.monte_carlo(
             events=events_dict,
             simulations=request.simulations,
-            volatility=request.volatility
+            volatility=request.volatility,
+            seed=request.seed,
         )
 
         return MonteCarloResponse(**result)
@@ -511,7 +580,11 @@ def monte_carlo_simulation(request: MonteCarloRequest):
 
 
 @app.get("/funds", response_model=List[FundOut], tags=["Funds"])
-def get_all_funds(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_all_funds(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, gt=0, le=500),
+    db: Session = Depends(get_db),
+):
     try:
         return db.query(Fund).offset(skip).limit(limit).all()
     except Exception as e:

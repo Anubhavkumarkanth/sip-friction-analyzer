@@ -7,6 +7,7 @@ Thank you for your interest in contributing to SIP Friction Analyzer! We welcome
 ### Prerequisites
 - Python 3.10+
 - Node.js 20+
+- PostgreSQL 14+
 - Git
 
 ### Development Setup
@@ -18,6 +19,10 @@ cd sip-friction-analyzer
 ```
 
 **2. Setup Backend**
+
+Create the database and `.env` first, as described under *Setup* in the [README](README.md). The
+app will not start without a reachable PostgreSQL.
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
@@ -52,26 +57,34 @@ npm run dev
 │   │   ├── pages/      # Dashboard, Monte Carlo, Explorer, Compare
 │   │   ├── services/   # Typed Axios API client
 │   │   ├── types/      # Shared TypeScript interfaces
-│   │   └── utils/      # INR formatters & client calculation helpers
+│   │   └── utils/      # INR formatting, API error formatting
 │   ├── jest.config.js  # Test configuration
 │   └── tsconfig.json   # TypeScript configuration
+├── docs/                # Index evaluation (EXPLAIN ANALYZE) notes
+├── scripts/             # benchmark_history_index.py: reproduces the index measurement
 ├── auth.py              # JWT authentication & password hashing
 ├── config.py            # Pydantic BaseSettings environment configuration
+├── conftest.py          # Test setup: database tests only run against a *_test database
 ├── database.py          # SQLAlchemy connection & session dependency
 ├── main.py              # FastAPI application routers & lifespans
 ├── models.py            # SQLAlchemy database models
+├── test_backend.py      # API tests (need PostgreSQL)
+├── test_engine.py       # Engine and metric tests (no database)
+├── ruff.toml            # Python lint settings
 └── requirements.txt     # Python backend dependencies
 ```
 
 ## Development Guidelines
 
 ### Code Style
-- **Python**: Follow PEP 8
+- **Python**: unused imports, undefined names and basic style are checked with ruff
   ```bash
-  flake8 engine/ models.py main.py
+  pip install ruff
+  ruff check .
   ```
 - **Frontend**: Use ESLint and TypeScript checks
   ```bash
+  cd frontend
   npm run type-check
   npm run lint
   ```
@@ -79,12 +92,17 @@ npm run dev
 ### Testing
 
 **Backend Tests**
+
+The API tests write and delete rows, so they run only against a database whose name ends in
+`_test`. Create one and set `TEST_DATABASE_URL`; without it the database tests are skipped.
 ```bash
-pytest test_backend.py -v
+export TEST_DATABASE_URL=postgresql+psycopg2://sip_app:<YOUR_PASSWORD>@localhost:5432/sip_test
+pytest -v
 ```
 
 **Frontend Tests**
 ```bash
+cd frontend
 npm test
 ```
 

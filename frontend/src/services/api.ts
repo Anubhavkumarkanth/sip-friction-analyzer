@@ -9,6 +9,7 @@ import {
   MonteCarloRequest,
   MonteCarloResult,
 } from '../types';
+import { describeApiError, SIGN_IN_PATH } from '../utils/apiErrorMessage';
 
 const TOKEN_KEY = 'sip_access_token';
 
@@ -66,7 +67,8 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    // A 401 from the sign-in request itself is a wrong password, not an ended session.
+    if (error.response?.status === 401 && error.config?.url !== SIGN_IN_PATH) {
       // The token is gone or expired. Drop it and tell the app, so the UI can
       // return to the sign-in screen instead of leaving the user clicking a
       // button that will keep failing.
@@ -89,7 +91,7 @@ export const authAPI = {
     form.append('username', username);
     form.append('password', password);
 
-    const response = await apiClient.post<AuthToken>('/token', form, {
+    const response = await apiClient.post<AuthToken>(SIGN_IN_PATH, form, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
 
@@ -151,31 +153,7 @@ export const simulationAPI = {
   },
 };
 
-export const handleApiError = (error: unknown): string => {
-  if (axios.isAxiosError(error)) {
-    if (error.response?.status === 401) {
-      return 'Your session has expired. Please sign in again.';
-    }
-    if (error.response?.data?.detail) {
-      return typeof error.response.data.detail === 'string'
-        ? error.response.data.detail
-        : JSON.stringify(error.response.data.detail);
-    }
-    if (error.response?.status === 404) {
-      return 'Requested resource not found.';
-    }
-    if (error.response?.status === 500) {
-      return 'Server error occurred during simulation.';
-    }
-    if (error.code === 'ECONNABORTED') {
-      return 'Simulation request timed out. Please try with fewer iterations.';
-    }
-    if (error.message === 'Network Error') {
-      return 'Backend API is unreachable. Please ensure the server is running.';
-    }
-    return error.message || 'An error occurred during the request.';
-  }
-  return error instanceof Error ? error.message : 'An unexpected error occurred.';
-};
+/** Plain-language message for whatever a request threw (the rules live in utils/apiErrorMessage.ts, where they are tested). */
+export const handleApiError = describeApiError;
 
 export default apiClient;
