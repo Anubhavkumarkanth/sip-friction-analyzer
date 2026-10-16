@@ -88,3 +88,87 @@ jobs:
 
       - name: Build Production Assets
         run: npm run build
+
+  docker-image:
+    name: Docker Image Build & Smoke Test
+    runs-on: ubuntu-latest
+
+    # The container needs a PostgreSQL it can reach (DEPLOYMENT.md says so). The service is published on the
+    # runner's port 5432 and the container shares the runner's network, so it connects to localhost.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: sip
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t sip-friction-analyzer:ci .
+
+      - name: Check that no secret or local file is in the image
+        run: |
+          # No .env (the example file is meant to be there), no secret baked in as image
+          # configuration or in the build history, and the process must not run as root.
+          docker run --rm --entrypoint sh sip-friction-analyzer:ci -c 'ls -A /app' | tee app-files.txt
+          if grep -E '^\.env' app-files.txt | grep -vx '\.env\.example'; then
+            echo "A .env file is in the image"; exit 1
+          fi
+          docker image inspect sip-friction-analyzer:ci --format '{{json .Config.Env}}' | tee image-env.txt
+          docker history --no-trunc sip-friction-analyzer:ci > image-history.txt
+          if grep -E 'SECRET_KEY|DATABASE_URL|DEFAULT_ADMIN_PASSWORD' image-env.txt image-history.txt; then
+            echo "A secret setting is baked into the image"; exit 1
+          fi
+          test "$(docker run --rm --entrypoint id sip-friction-analyzer:ci -u)" = "1000"
+
+      - name: Start the container against PostgreSQL
+        run: |
+          docker run -d --name sip --network host \
+            -e DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/sip \
+            -e SECRET_KEY=ci-only-signing-key \
+            -e DEFAULT_ADMIN_PASSWORD=ci-only-password \
+            sip-friction-analyzer:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/api; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/api
+
+      - name: Sign in, run a simulation and load the page
+        run: |
+          # A wrong password is refused; the seeded account signs in.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -d 'username=admin&password=wrong' http://localhost:8000/token)" = "401"
+          token=$(curl -fsS -d 'username=admin&password=ci-only-password' http://localhost:8000/token | jq -r .access_token)
+          test -n "$token" && test "$token" != "null"
+          # A plan with no friction loses nothing: ideal and actual wealth match and the score is 100.
+          curl -fsS -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+            -d '{"monthly_amount":10000,"annual_return":12,"years":20,"events":[]}' \
+            http://localhost:8000/simulate | tee simulate.json
+          jq -e '.discipline_score == 100 and .actual_value == .ideal_value' simulate.json
+          # A pause that ends before it starts is a 422, not a 500.
+          bad='{"monthly_amount":5000,"annual_return":12,"years":1,"events":[{"type":"PAUSE_RANGE","start_month":5,"end_month":3}]}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d "$bad" http://localhost:8000/simulate)" = "422"
+          # The built frontend is served at /.
+          curl -fsS http://localhost:8000/ | grep -q 'id="root"'
+
+      - name: Check that the database was initialised
+        run: |
+          psql postgresql://postgres@localhost:5432/sip -At \
+            -c "select table_name from information_schema.tables where table_schema = 'public' order by 1" | tee tables.txt
+          for table in funds simulation_events simulations users; do grep -qx "$table" tables.txt; done
+          psql postgresql://postgres@localhost:5432/sip -At -c "select count(*) from users" | grep -qx 1
+          psql postgresql://postgres@localhost:5432/sip -At -c "select count(*) from simulations" | grep -qx 1
+
+      - name: Container log
+        if: always()
+        run: docker logs sip

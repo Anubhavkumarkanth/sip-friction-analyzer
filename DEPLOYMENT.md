@@ -40,11 +40,18 @@ docker run --rm -p 8000:8000 \
 The container needs a PostgreSQL it can reach; there is no `docker-compose.yml`. `.dockerignore`
 keeps a local `.env` out of the image, so pass settings at run time as above.
 
-**Status.** The full image has not been built or run: Docker was not available where this was last
-worked on. What was checked is the first stage. Its steps (copy the listed files, `npm ci`,
-`npm run build`) were run outside Docker and build successfully; that check found the stage
-failing because `tsconfig.node.json` was never copied, which is now fixed. Treat the rest of the
-image as a starting point, not a verified deployment.
+**Status.** The image is built and run in CI. The job "Docker Image Build & Smoke Test" in
+`.github/workflows/ci.yml` builds this `Dockerfile` on a Linux runner, starts the container against a
+PostgreSQL service, and checks that a wrong password is refused, the seeded account signs in, a
+simulation runs, an invalid pause is rejected with a 422, the built frontend is served at `/`, and the
+tables were created. It also checks that the image holds no `.env`, that no secret is set in its
+configuration or build history, and that the process does not run as root. What this does not show:
+it has not been run on the author's own computer (Docker is not installed there), and nothing has
+been deployed to a host, so HTTPS, a different origin for the frontend and a hosted database are
+untested.
+
+Use a `SECRET_KEY` of at least 32 bytes. A shorter key works but makes PyJWT log an
+`InsecureKeyLengthWarning`, as the CI job's throwaway key does.
 
 Because the frontend calls `http://localhost:8000` unless `VITE_API_URL` is set when it is built,
 the image as it stands works when you open it on the machine running the container and not from a
