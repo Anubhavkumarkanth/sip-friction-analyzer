@@ -147,3 +147,65 @@
 .page-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Phones: stack the sidebar above the page and let the whole page scroll.
+   Left as it is on desktop, the 260px sidebar sits beside the content on a
+   375px screen and leaves the page about 100px, clipped by overflow: hidden. */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: auto;
+    margin: 0.75rem 0.75rem 0;
+  }
+
+  .sidebar-header {
+    padding: 1rem 1.25rem 0.5rem;
+  }
+
+  .sidebar-nav {
+    flex: none;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .nav-item {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.625rem 0.25rem;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .sidebar-footer {
+    display: none;
+  }
+
+  .main-content-area {
+    flex: 1 0 auto;
+    min-width: 0;
+    padding: 0.75rem;
+    overflow: visible;
+  }
+
+  .top-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .page-content {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+}
