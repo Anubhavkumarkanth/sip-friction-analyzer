@@ -16,8 +16,9 @@ guess.
 - **`CORS_ORIGINS`** if the frontend is served from a different origin than the API. It takes a
   JSON list, for example `CORS_ORIGINS='["https://app.example.com"]'`. The default allows only the
   local development origins.
-- **`VITE_API_URL`** when the frontend is built, if the API is not at `http://localhost:8000`. It is
-  baked into the JavaScript bundle at build time.
+- **`VITE_API_URL`** when the frontend is built, only if the API is on a different origin from the
+  frontend. It is baked into the JavaScript bundle at build time. Unset, a production build uses
+  the page's own origin.
 
 ## Local development
 
@@ -53,9 +54,24 @@ untested.
 Use a `SECRET_KEY` of at least 32 bytes. A shorter key works but makes PyJWT log an
 `InsecureKeyLengthWarning`, as the CI job's throwaway key does.
 
-Because the frontend calls `http://localhost:8000` unless `VITE_API_URL` is set when it is built,
-the image as it stands works when you open it on the machine running the container and not from a
-remote host.
+A production build of the frontend calls the API on its own origin, so the image works from any
+host name with no `VITE_API_URL`. Set `VITE_API_URL` at build time only if the API is hosted
+elsewhere. The dev server (`npm run dev`) still defaults to `http://localhost:8000`.
+
+## Render
+
+`render.yaml` is a Render Blueprint for a Docker web service built from the `Dockerfile`. The
+database is a separate free PostgreSQL on [Neon](https://neon.tech), because Render's own free
+database is deleted after 30 days.
+
+1. In Neon, create a project and copy its connection string (`postgresql://...?sslmode=require`).
+2. In Render choose *New > Blueprint*, pick this repository, and enter `DATABASE_URL` (the Neon
+   string) and `DEFAULT_ADMIN_PASSWORD` when asked. `SECRET_KEY` is generated for you.
+
+Both free tiers stay free with no expiry, with two limits. The Render web service sleeps after
+about 15 minutes idle, so the next request takes up to a minute. Neon suspends its compute when
+idle and wakes on the next connection, and the free plan has a small storage cap. Neither is a
+substitute for backups.
 
 ## Before putting it on the internet
 

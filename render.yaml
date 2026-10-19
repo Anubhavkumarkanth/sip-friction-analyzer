@@ -1,0 +1,19 @@
+# Render Blueprint: one Docker web service (API + built frontend on one origin).
+# The database is an external free PostgreSQL (Neon), because Render's own free
+# database expires after 30 days. See DEPLOYMENT.md.
+services:
+  - type: web
+    name: sip-friction-analyzer
+    runtime: docker
+    plan: free
+    healthCheckPath: /api
+    envVars:
+      # Neon connection string (starts with postgresql://, which SQLAlchemy opens
+      # with psycopg2). Asked for in the dashboard on first sync; never committed.
+      - key: DATABASE_URL
+        sync: false
+      # Generated once and kept across deploys, so tokens survive restarts.
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false

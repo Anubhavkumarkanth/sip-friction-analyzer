@@ -47,8 +47,14 @@ export const authStorage = {
   },
 };
 
+// A production build is served by the FastAPI app itself, so it calls the API on
+// its own origin. VITE_API_URL overrides this when the API lives elsewhere; the
+// dev server keeps talking to the local backend.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
