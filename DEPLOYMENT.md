@@ -60,11 +60,18 @@ elsewhere. The dev server (`npm run dev`) still defaults to `http://localhost:80
 
 ## Render
 
-`render.yaml` is a Render Blueprint: a Docker web service built from the `Dockerfile` plus a
-PostgreSQL database. In the Render dashboard choose *New > Blueprint*, pick this repository, and
-enter `DEFAULT_ADMIN_PASSWORD` when asked. `DATABASE_URL` is wired to the database and
-`SECRET_KEY` is generated for you. The free database plan expires after 30 days, and the free web
-service sleeps when idle; use paid plans for anything lasting.
+`render.yaml` is a Render Blueprint for a Docker web service built from the `Dockerfile`. The
+database is a separate free PostgreSQL on [Neon](https://neon.tech), because Render's own free
+database is deleted after 30 days.
+
+1. In Neon, create a project and copy its connection string (`postgresql://...?sslmode=require`).
+2. In Render choose *New > Blueprint*, pick this repository, and enter `DATABASE_URL` (the Neon
+   string) and `DEFAULT_ADMIN_PASSWORD` when asked. `SECRET_KEY` is generated for you.
+
+Both free tiers stay free with no expiry, with two limits. The Render web service sleeps after
+about 15 minutes idle, so the next request takes up to a minute. Neon suspends its compute when
+idle and wakes on the next connection, and the free plan has a small storage cap. Neither is a
+substitute for backups.
 
 ## Before putting it on the internet
 
