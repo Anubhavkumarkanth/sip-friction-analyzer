@@ -1,7 +1,8 @@
 # Deployment notes
 
-This project is not deployed anywhere. These notes say what running it needs, so nobody has to
-guess.
+A demo is deployed at https://sip-friction-analyzer.onrender.com on Render's free plan, with a free
+Neon PostgreSQL database (see [Render](#render) and [Demo mode](#demo-mode) below). These notes say
+what running it needs, so nobody has to guess.
 
 ## What it needs
 
@@ -47,9 +48,9 @@ PostgreSQL service, and checks that a wrong password is refused, the seeded acco
 simulation runs, an invalid pause is rejected with a 422, the built frontend is served at `/`, and the
 tables were created. It also checks that the image holds no `.env`, that no secret is set in its
 configuration or build history, and that the process does not run as root. What this does not show:
-it has not been run on the author's own computer (Docker is not installed there), and nothing has
-been deployed to a host, so HTTPS, a different origin for the frontend and a hosted database are
-untested.
+it has not been run on the author's own computer. The same image is also running on Render, which
+serves it over HTTPS with the frontend and API on one origin, against a hosted Neon database. A
+frontend on a different origin from the API (`VITE_API_URL` and `CORS_ORIGINS`) is still untested.
 
 Use a `SECRET_KEY` of at least 32 bytes. A shorter key works but makes PyJWT log an
 `InsecureKeyLengthWarning`, as the CI job's throwaway key does.

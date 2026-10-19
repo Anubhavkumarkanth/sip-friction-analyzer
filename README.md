@@ -8,6 +8,10 @@ year at half the amount, an annual step-up — and it compares that against the 
 
 Built with React and TypeScript on the front, FastAPI and PostgreSQL behind it.
 
+**Live demo:** https://sip-friction-analyzer.onrender.com (no sign-in needed). It runs on free
+hosting, so the first load after a quiet spell can take up to a minute. Visitors share one demo
+account; see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ---
 
 ## What it does
