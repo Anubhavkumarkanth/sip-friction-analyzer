@@ -105,6 +105,21 @@ export const authAPI = {
     return response.data.access_token;
   },
 
+  /**
+   * Sign in as the shared demo account. Resolves true when it worked, and false
+   * when the server has demo mode off (404) or cannot be reached, so the caller
+   * falls back to the normal sign-in page.
+   */
+  demoLogin: async (): Promise<boolean> => {
+    try {
+      const response = await apiClient.post<AuthToken>('/demo-token');
+      authStorage.set(response.data.access_token);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   logout: (): void => authStorage.clear(),
 
   isLoggedIn: (): boolean => authStorage.get() !== null,

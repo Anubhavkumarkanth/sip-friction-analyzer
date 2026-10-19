@@ -73,6 +73,23 @@ about 15 minutes idle, so the next request takes up to a minute. Neon suspends i
 idle and wakes on the next connection, and the free plan has a small storage cap. Neither is a
 substitute for backups.
 
+## Demo mode
+
+Set `DEMO_MODE=true` (the Render Blueprint does) for a public portfolio link that needs no sign-in.
+At startup the server creates a `demo` account with a random password nobody knows, and
+`POST /demo-token` hands a token for it to anyone. The frontend calls that endpoint when there is
+no saved session, so visitors land straight on the dashboard. With `DEMO_MODE` unset or false,
+`/demo-token` answers 404 and the sign-in page is shown as before.
+
+What to know before leaving it on:
+
+- Every visitor shares one account, so they see each other's saved runs and can delete them.
+- Anyone can create simulations, which are stored in the database. Nothing limits how many, so see
+  the rate-limiting note below, and keep an eye on the database size on a free plan.
+- The `admin` account still works through `/token` and the API docs at `/docs`, but the web page
+  no longer shows a sign-in form while demo mode is on.
+- A token lasts 60 minutes. When it expires the page signs in again by itself.
+
 ## Before putting it on the internet
 
 - Serve it over HTTPS (terminate TLS at the host or a reverse proxy).

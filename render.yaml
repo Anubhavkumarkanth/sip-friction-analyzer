@@ -17,3 +17,7 @@ services:
         generateValue: true
       - key: DEFAULT_ADMIN_PASSWORD
         sync: false
+      # Public portfolio demo: visitors are signed in automatically as a shared
+      # demo account, with no sign-in page. Remove or set to "false" to turn it off.
+      - key: DEMO_MODE
+        value: "true"
