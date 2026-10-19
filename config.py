@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_USER: str = os.getenv("DEFAULT_ADMIN_USER", "admin")
     DEFAULT_ADMIN_PASSWORD: str = os.getenv("DEFAULT_ADMIN_PASSWORD", "")
 
+    # Public demo. Off by default. When DEMO_MODE is true, POST /demo-token hands
+    # a token for a separate demo account to anyone, and the frontend signs
+    # visitors in with it so they never see a sign-in page. The demo account has
+    # no usable password, so it cannot be signed into through /token.
+    DEMO_MODE: bool = False
+    DEMO_USERNAME: str = "demo"
+
     class Config:
         case_sensitive = True
         env_file = ".env"

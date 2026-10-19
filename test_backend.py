@@ -484,3 +484,28 @@ def test_monte_carlo_rejects_a_request_that_is_too_large(client):
 def test_monte_carlo_validates_events_like_simulate_does(client):
     response = client.post("/monte-carlo", json={**MONTE_CARLO, "events": [{"type": "REDUCE", "month": 3}]})
     assert response.status_code == 422
+
+
+# ==========================================
+# Demo mode
+# ==========================================
+def test_demo_token_is_not_found_when_demo_mode_is_off(client, monkeypatch):
+    monkeypatch.setattr(settings, "DEMO_MODE", False)
+    assert client.post("/demo-token").status_code == 404
+
+
+def test_demo_token_signs_in_the_demo_account_when_demo_mode_is_on(client, user, monkeypatch):
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "DEMO_USERNAME", user["username"])
+
+    response = client.post("/demo-token")
+
+    assert response.status_code == 200
+    headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+    assert client.get("/simulations", headers=headers).status_code == 200
+
+
+def test_demo_token_is_unavailable_until_the_demo_account_exists(client, monkeypatch):
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "DEMO_USERNAME", f"missing-{uuid.uuid4().hex[:12]}")
+    assert client.post("/demo-token").status_code == 503

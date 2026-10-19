@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
+import secrets
 from typing import List, Optional, Literal
 
 from fastapi import FastAPI, Query, Depends, HTTPException, status
@@ -107,6 +108,15 @@ def seed_initial_data():
             ))
             db.commit()
             logger.info("Seeded account '%s'.", settings.DEFAULT_ADMIN_USER)
+
+        if settings.DEMO_MODE and not db.query(User).filter(User.username == settings.DEMO_USERNAME).first():
+            # A random password nobody is told, so the only way in is /demo-token.
+            db.add(User(
+                username=settings.DEMO_USERNAME,
+                hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            ))
+            db.commit()
+            logger.info("Seeded demo account '%s'.", settings.DEMO_USERNAME)
     except Exception as e:
         logger.error(f"Error during database initialization: {e}")
         db.rollback()
@@ -343,11 +353,26 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    return _token_for(user)
+
+
+def _token_for(user: User) -> dict:
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/demo-token", response_model=Token, tags=["Auth"])
+def demo_token(db: Session = Depends(get_db)):
+    """Token for the shared demo account. A 404 unless DEMO_MODE is on."""
+    if not settings.DEMO_MODE:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    user = db.query(User).filter(User.username == settings.DEMO_USERNAME).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Demo account is not ready")
+    return _token_for(user)
 
 
 @app.post("/simulate", response_model=SimulationResponse, tags=["Simulation"])

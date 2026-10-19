@@ -21,6 +21,27 @@ const App: FC = () => {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
+  // With no session, try the shared demo account first. A server with demo mode
+  // off answers 404 and the sign-in page below is shown as before.
+  const [checkingDemo, setCheckingDemo] = useState<boolean>(() => !authAPI.isLoggedIn());
+  useEffect(() => {
+    if (loggedIn) return;
+    let cancelled = false;
+    setCheckingDemo(true);
+    authAPI.demoLogin().then((ok) => {
+      if (cancelled) return;
+      if (ok) setLoggedIn(true);
+      setCheckingDemo(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  if (!loggedIn && checkingDemo) {
+    return <p role="status" style={{ padding: '2rem' }}>Loading…</p>;
+  }
+
   if (!loggedIn) {
     return (
       <ErrorBoundary>
