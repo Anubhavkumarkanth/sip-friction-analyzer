@@ -16,8 +16,9 @@ guess.
 - **`CORS_ORIGINS`** if the frontend is served from a different origin than the API. It takes a
   JSON list, for example `CORS_ORIGINS='["https://app.example.com"]'`. The default allows only the
   local development origins.
-- **`VITE_API_URL`** when the frontend is built, if the API is not at `http://localhost:8000`. It is
-  baked into the JavaScript bundle at build time.
+- **`VITE_API_URL`** when the frontend is built, only if the API is on a different origin from the
+  frontend. It is baked into the JavaScript bundle at build time. Unset, a production build uses
+  the page's own origin.
 
 ## Local development
 
@@ -53,9 +54,17 @@ untested.
 Use a `SECRET_KEY` of at least 32 bytes. A shorter key works but makes PyJWT log an
 `InsecureKeyLengthWarning`, as the CI job's throwaway key does.
 
-Because the frontend calls `http://localhost:8000` unless `VITE_API_URL` is set when it is built,
-the image as it stands works when you open it on the machine running the container and not from a
-remote host.
+A production build of the frontend calls the API on its own origin, so the image works from any
+host name with no `VITE_API_URL`. Set `VITE_API_URL` at build time only if the API is hosted
+elsewhere. The dev server (`npm run dev`) still defaults to `http://localhost:8000`.
+
+## Render
+
+`render.yaml` is a Render Blueprint: a Docker web service built from the `Dockerfile` plus a
+PostgreSQL database. In the Render dashboard choose *New > Blueprint*, pick this repository, and
+enter `DEFAULT_ADMIN_PASSWORD` when asked. `DATABASE_URL` is wired to the database and
+`SECRET_KEY` is generated for you. The free database plan expires after 30 days, and the free web
+service sleeps when idle; use paid plans for anything lasting.
 
 ## Before putting it on the internet
 
